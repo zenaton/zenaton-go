@@ -31,12 +31,21 @@ func init() {
 }
 
 func main() {
-	workflows.SequentialWorkflow.Execute()
-	workflows.AsynchronousWorkflow.Execute()
-	//workflows.ParallelWorkflow.Dispatch()
+	//workflows.SequentialWorkflow.Execute()
+	//workflows.AsynchronousWorkflow.Execute()
+	workflows.ParallelWorkflow.Execute()
+	////
+	////workflows.EventWorkflow.Execute()
+	////time.Sleep(2000 * time.Millisecond)
+	////workflows.EventWorkflow.WhereID("MyId").Send("MyEvent", nil)
+	////workflows.WaitWorkflow.Dispatch()
 	//
-	//workflows.EventWorkflow.Dispatch()
-	//time.Sleep(2000 * time.Millisecond)
-	//workflows.EventWorkflow.WhereID("MyId").Send("MyEvent", nil);
+	//workflows.WaitEventWorkflow.Dispatch()
+	//
+	//time.Sleep(2 * time.Second)
+	//workflows.WaitEventWorkflow.WhereID("MyId").Send("MyEvent", nil)
+
 	time.Sleep(30 * time.Millisecond)
 }
+
+//todo: change parallel to work synchronously per conversation with Gilles

@@ -5,7 +5,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/zenaton/zenaton-go/v1/zenaton/services/http"
 )
 
@@ -68,11 +67,9 @@ func New(worker bool) *Client {
 }
 
 //todo: figure out how to handle errors
-func (c *Client) StartWorkflow(flowName, flowCanonical string) []interface{} {
+func (c *Client) StartWorkflow(flowName, flowCanonical, customID string) interface{} {
 	//todo: fix this so that it actually uses the ID() function?
-	//customID := flow.ID()
-	spew.Dump("bob", instance)
-	customID := ""
+	//customID := id()
 	if len(customID) >= MAX_ID_SIZE {
 		//todo: handle this error better
 		fmt.Println(`Provided id must not exceed ` + strconv.Itoa(MAX_ID_SIZE) + ` bytes`)
@@ -87,13 +84,25 @@ func (c *Client) StartWorkflow(flowName, flowCanonical string) []interface{} {
 	body[ATTR_ID] = customID
 
 	http.Post(c.getInstanceWorkerUrl(""), body)
-
-	return []interface{}{}
+	//todo: fix this
+	return "bob"
 }
 
-//todo: fill this out from js example
+// todo: should this return something?
 func (c *Client) SendEvent(workflowName, customID, eventName string, eventData interface{}) {
-	fmt.Println(workflowName, customID, eventName, eventData)
+	var url = c.getSendEventURL()
+	body := make(map[string]interface{})
+	body[ATTR_PROG] = PROG
+	body[ATTR_NAME] = workflowName
+	body[ATTR_ID] = customID
+	body[EVENT_NAME] = eventName
+	//todo: use serializer here
+	body[EVENT_INPUT] = "{}"
+	http.Post(url, body)
+}
+
+func (c *Client) getSendEventURL() string {
+	return c.getWorkerUrl("events", "")
 }
 
 func (c *Client) getInstanceWorkerUrl(params string) string {
@@ -133,7 +142,5 @@ func (c *Client) addAppEnv(url, params string) string {
 		params = params + "&"
 	}
 
-	fmt.Println("do we get here?", appEnv, appID, params)
 	return url + appEnvx + appIDx + params
-	return ""
 }
