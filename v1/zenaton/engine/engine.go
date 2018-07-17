@@ -5,6 +5,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/zenaton/zenaton-go/v1/zenaton/client"
+	"github.com/zenaton/zenaton-go/v1/zenaton/job"
 )
 
 var instance *Engine
@@ -23,14 +24,8 @@ func New() *Engine {
 	return instance
 }
 
-// todo: maybe I don't want this to be exported, so only tasks and workflows can implement this interface
-type Job interface {
-	Handle() interface{}
-	AsyncHandle(chan interface{})
-}
-
 type Processor interface {
-	Process([]Job, bool) []interface{}
+	Process([]job.Job, bool) []interface{}
 }
 
 type chanResult struct {
@@ -46,7 +41,7 @@ func wrapper(index int, outcome chan chanResult, handle func() interface{}) {
 }
 
 //todo: error handling
-func (e *Engine) Execute(jobs []Job) []interface{} {
+func (e *Engine) Execute(jobs []job.Job) []interface{} {
 
 	// local execution
 	if e.processor == nil || len(jobs) == 0 {
@@ -71,7 +66,7 @@ func (e *Engine) Execute(jobs []Job) []interface{} {
 	return e.processor.Process(jobs, true)
 }
 
-func (e *Engine) Dispatch(jobs []Job) []chan interface{} {
+func (e *Engine) Dispatch(jobs []job.Job) []chan interface{} {
 	// local execution
 	var chans []chan interface{}
 	for range jobs {
