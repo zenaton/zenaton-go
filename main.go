@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/subosito/gotenv"
+	"github.com/zenaton/zenaton-go/tasks/recursive"
 	"github.com/zenaton/zenaton-go/v1/zenaton/client"
-	"github.com/zenaton/zenaton-go/workflows"
 )
 
 func init() {
@@ -31,21 +31,26 @@ func init() {
 }
 
 func main() {
-	//workflows.SequentialWorkflow.Execute()
-	//workflows.AsynchronousWorkflow.Execute()
-	workflows.ParallelWorkflow.Execute()
-	////
-	////workflows.EventWorkflow.Execute()
-	////time.Sleep(2000 * time.Millisecond)
-	////workflows.EventWorkflow.WhereID("MyId").Send("MyEvent", nil)
-	////workflows.WaitWorkflow.Dispatch()
-	//
+	//workflows.SequentialWorkflow.Dispatch()
+	//workflows.AsynchronousWorkflow.Dispatch()
+	//workflows.ParallelWorkflow.Dispatch()
+
+	//workflows.EventWorkflow.Dispatch()
+	//time.Sleep(2 * time.Second)
+	//workflows.EventWorkflow.WhereID("MyId").Send("MyEvent", nil)
+
+	//workflows.WaitWorkflow.Dispatch()
+
 	//workflows.WaitEventWorkflow.Dispatch()
-	//
 	//time.Sleep(2 * time.Second)
 	//workflows.WaitEventWorkflow.WhereID("MyId").Send("MyEvent", nil)
+
+	recursive.NewRecursiveWorkflow(0, 4).Dispatch()
+
+	//workflows.VersionWorkflow.Dispatch()
 
 	time.Sleep(30 * time.Millisecond)
 }
 
 //todo: change parallel to work synchronously per conversation with Gilles
+//todo: make sure there are no race conditions in the case of running these things concurrently

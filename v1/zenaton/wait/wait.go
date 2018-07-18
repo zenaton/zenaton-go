@@ -15,8 +15,9 @@ type duration struct {
 func New(data interface{}) *Wait {
 	return &Wait{
 		task: &task.Task{
-			Name: "_Wait",
-			Data: data,
+			Name:       "_Wait",
+			Data:       data,
+			HandleFunc: func() interface{} { return nil },
 		},
 	}
 }

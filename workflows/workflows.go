@@ -5,6 +5,7 @@ import (
 
 	"github.com/zenaton/zenaton-go/tasks"
 	"github.com/zenaton/zenaton-go/v1/zenaton/task"
+	"github.com/zenaton/zenaton-go/v1/zenaton/version"
 	"github.com/zenaton/zenaton-go/v1/zenaton/wait"
 	"github.com/zenaton/zenaton-go/v1/zenaton/workflow"
 )
@@ -18,8 +19,14 @@ var (
 			tasks.TaskB.Execute()
 			return nil
 		},
-		ID: func() string {
-			return "MyId"
+	}
+
+	AsynchronousWorkflow = workflow.Workflow{
+		Name: "AsynchronousWorkflow",
+		HandleFunc: func() interface{} {
+			tasks.TaskA.Dispatch()
+			tasks.TaskB.Execute()
+			return nil
 		},
 	}
 
@@ -34,21 +41,6 @@ var (
 			fmt.Println("outcomes: ", outcomes)
 			tasks.TaskC.Execute()
 			return nil
-		},
-		ID: func() string {
-			return "MyId"
-		},
-	}
-
-	AsynchronousWorkflow = workflow.Workflow{
-		Name: "AsynchronousWorkflow",
-		HandleFunc: func() interface{} {
-			tasks.TaskA.Dispatch()
-			tasks.TaskB.Execute()
-			return nil
-		},
-		ID: func() string {
-			return "MyId"
 		},
 	}
 
@@ -81,9 +73,6 @@ var (
 			tasks.TaskB.Execute()
 			return nil
 		},
-		ID: func() string {
-			return "MyId"
-		},
 	}
 
 	WaitEventWorkflow = workflow.Workflow{
@@ -103,32 +92,51 @@ var (
 			}
 			return nil
 		},
+
 		ID: func() string {
 			return "MyId"
 		},
 	}
 
-	RecursiveWorkflow = workflow.Workflow{
-		Name: "RecursiveWorkflow",
+	VersionWorkflow = version.New("VersionWorkflow", []*workflow.Workflow{
+		VersionWorkflow_v0,
+		VersionWorkflow_v1,
+		VersionWorkflow_v2,
+	})
+
+	VersionWorkflow_v0 = &workflow.Workflow{
+		Name: "VersionWorkflow_v0",
 		HandleFunc: func() interface{} {
-
-			// Wait until the event or 4 seconds
-			event := wait.New("MyEvent").Seconds(4).Execute()
-
-			// If event has been triggered
-			if event != nil {
-				// Execute TaskB
-				tasks.TaskA.Execute()
-			} else {
-				// Execute Task B
-				tasks.TaskB.Execute()
-			}
+			task.Tasks{
+				tasks.TaskA,
+				tasks.TaskB,
+			}.Execute()
 			return nil
 		},
-		ID: func() string {
-			return "MyId"
+	}
+
+	VersionWorkflow_v1 = &workflow.Workflow{
+		Name: "VersionWorkflow_v1",
+		HandleFunc: func() interface{} {
+			task.Tasks{
+				tasks.TaskA,
+				tasks.TaskB,
+				tasks.TaskC,
+			}.Execute()
+			return nil
 		},
 	}
 
-
+	VersionWorkflow_v2 = &workflow.Workflow{
+		Name: "VersionWorkflow_v2",
+		HandleFunc: func() interface{} {
+			task.Tasks{
+				tasks.TaskA,
+				tasks.TaskB,
+				tasks.TaskC,
+				tasks.TaskD,
+			}.Execute()
+			return nil
+		},
+	}
 )

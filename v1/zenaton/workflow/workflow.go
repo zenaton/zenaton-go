@@ -1,8 +1,6 @@
 package workflow
 
 import (
-	"fmt"
-
 	"github.com/zenaton/zenaton-go/v1/zenaton/client"
 	"github.com/zenaton/zenaton-go/v1/zenaton/engine"
 	"github.com/zenaton/zenaton-go/v1/zenaton/query"
@@ -17,22 +15,18 @@ type Workflow struct {
 	canonical string
 }
 
-func New (data interface{}) {
-
-}
-
 func (wf *Workflow) Handle() interface{} {
 	return wf.HandleFunc()
 }
 
 func (wf *Workflow) AsyncHandle(channel chan interface{}) {
 	c := client.New(false)
-	fmt.Println(channel)
-	fmt.Println(c)
-	fmt.Println(wf.Name)
-	fmt.Println(wf.canonical)
-	fmt.Println(wf.ID())
-	channel <- c.StartWorkflow(wf.Name, wf.canonical, wf.ID())
+
+	id := ""
+	if wf.ID != nil {
+		id = wf.ID()
+	}
+	channel <- c.StartWorkflow(wf.Name, wf.canonical, id)
 }
 
 func (wf *Workflow) Dispatch() {
@@ -53,4 +47,8 @@ func (wf *Workflow) WhereID(id string) *query.Builder {
 // todo: in js this is with an underscore in front, figure out why and make sure I'm copying functionality
 func (wf *Workflow) GetCanonical() string {
 	return wf.canonical
+}
+
+func (wf *Workflow) SetCanonical(canonical string) {
+	wf.canonical = canonical
 }

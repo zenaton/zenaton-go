@@ -6,6 +6,7 @@ type Task struct {
 	Name       string
 	HandleFunc func() interface{}
 	Data       interface{}
+	ID         func() string
 }
 
 func (t *Task) Handle() interface{} {

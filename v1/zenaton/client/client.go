@@ -68,8 +68,7 @@ func New(worker bool) *Client {
 
 //todo: figure out how to handle errors
 func (c *Client) StartWorkflow(flowName, flowCanonical, customID string) interface{} {
-	//todo: fix this so that it actually uses the ID() function?
-	//customID := id()
+
 	if len(customID) >= MAX_ID_SIZE {
 		//todo: handle this error better
 		fmt.Println(`Provided id must not exceed ` + strconv.Itoa(MAX_ID_SIZE) + ` bytes`)

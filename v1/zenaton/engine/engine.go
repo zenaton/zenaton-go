@@ -3,7 +3,6 @@ package engine
 import (
 	"reflect"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/zenaton/zenaton-go/v1/zenaton/client"
 )
 
@@ -77,7 +76,7 @@ func (e *Engine) Dispatch(jobs []Job) []chan interface{} {
 	for range jobs {
 		chans = append(chans, make(chan interface{}))
 	}
-	spew.Dump(!reflect.ValueOf(e.processor).IsValid())
+
 	if !reflect.ValueOf(e.processor).IsValid() || len(jobs) == 0 {
 		for i, job := range jobs {
 			go job.AsyncHandle(chans[i])
