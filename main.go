@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 
-	"github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
 	"github.com/subosito/gotenv"
 	"github.com/zenaton/zenaton-go/v1/zenaton/client"
@@ -36,7 +35,7 @@ func init() {
 // a plugin and host. If the handshake fails, a user friendly error is shown.
 // This prevents users from executing bad plugins or executing a plugin
 // directory. It is a UX feature, not a security feature.
-var handshakeConfig = plugin.HandshakeConfig{
+var handshakeConfig = HandshakeConfig{
 	ProtocolVersion:  1,
 	MagicCookieKey:   "BASIC_PLUGIN",
 	MagicCookieValue: "hello",
@@ -57,20 +56,13 @@ func main() {
 	//time.Sleep(2 * time.Second)
 	//workflows.WaitEventWorkflow.WhereID("MyId").Send("MyEvent", nil)
 
-	logger := hclog.New(&hclog.LoggerOptions{
-		Level:      hclog.Trace,
-		Output:     os.Stderr,
-		JSONFormat: true,
-	})
-
 	// pluginMap is the map of plugins we can dispense.
 	var pluginMap = map[string]plugin.Plugin{
 		"job": &job.JobPlugin{Impl: &workflows.SequentialWorkflow},
 	}
 
-	logger.Debug("message from plugin", "foo", "bar")
-
-	plugin.Serve(&plugin.ServeConfig{
+	os.Setenv(handshakeConfig.MagicCookieKey, handshakeConfig.MagicCookieValue)
+	Serve(&ServeConfig{
 		HandshakeConfig: handshakeConfig,
 		Plugins:         pluginMap,
 	})

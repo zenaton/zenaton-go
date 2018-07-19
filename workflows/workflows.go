@@ -16,7 +16,7 @@ var (
 		HandleFunc: func() interface{} {
 			tasks.TaskA.Execute()
 			tasks.TaskB.Execute()
-			return nil
+			return "hello!"
 		},
 		ID: func() string {
 			return "MyId"

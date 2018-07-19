@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
+
+	"net"
 
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
@@ -19,14 +20,20 @@ func main() {
 		Level:  hclog.Debug,
 	})
 
+	//addr, err := net.ResolveUnixAddr("/var/folders/vm/x61t9b351ps2b94ff7x5g6k40000gn/T/plugin914058232", "bob")
+
 	// We're a host! Start by launching the plugin process.
 	client := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig: handshakeConfig,
 		Plugins:         pluginMap,
-		Cmd:             exec.Command("../zenaton-go"),
-		Logger:          logger,
+		//Cmd:             exec.Command("../zenaton-go"),
+		Logger:  logger,
+		Managed: true,
+		Reattach: &plugin.ReattachConfig{
+			Protocol: plugin.ProtocolNetRPC,
+			Addr:     &net.UnixAddr{Name: "127.0.0.1:10000", Net: "tcp"},
+		},
 	})
-	//defer client.Kill()
 
 	// Connect via RPC
 	rpcClient, err := client.Client()
@@ -44,6 +51,7 @@ func main() {
 	// implementation but is in fact over an RPC connection.
 	job := raw.(job.Job)
 	fmt.Println(job.Handle())
+
 }
 
 // handshakeConfigs are used to just do a basic handshake between
