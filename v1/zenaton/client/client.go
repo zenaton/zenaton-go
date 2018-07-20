@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 
+	"io/ioutil"
+
 	"github.com/zenaton/zenaton-go/v1/zenaton/services/http"
 )
 
@@ -27,7 +29,7 @@ const (
 	ATTR_PROG      = "programming_language"
 	ATTR_MODE      = "mode"
 
-	PROG = "Javascript"
+	PROG = "Go"
 
 	EVENT_INPUT = "event_input"
 	EVENT_NAME  = "event_name"
@@ -52,6 +54,8 @@ func InitClient(appIDx, apiTokenx, appEnvx string) {
 	appID = appIDx
 	apiToken = apiTokenx
 	appEnv = appEnvx
+
+	//todo?: //os.Setenv("ZENATON_LIBRARY_PATH", )
 }
 
 func New(worker bool) *Client {
@@ -82,7 +86,16 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string) interfa
 	body[ATTR_DATA] = "{}"
 	body[ATTR_ID] = customID
 
-	http.Post(c.getInstanceWorkerUrl(""), body)
+	resp, err := http.Post(c.getInstanceWorkerUrl(""), body)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("respBody: ", string(respBody))
 	//todo: fix this
 	return "bob"
 }

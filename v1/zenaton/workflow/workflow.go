@@ -7,12 +7,32 @@ import (
 )
 
 type Workflow struct {
+	// todo: maybe unexport these so you have to use the constructor functions?
 	Name       string
 	HandleFunc func() interface{}
 	OnEvent    func(string, interface{}) // todo: should this be an empty interface?
 	//todo: in Client.js it says that ID could either be a function or a field
+	//todo: do we need this to be a function? because it's kinda funny looking that way
 	ID        func() string
 	canonical string
+}
+
+func New(name string, handlfunc func() interface{}) *Workflow {
+	return &Workflow{
+		Name:       name,
+		HandleFunc: handlfunc,
+	}
+	//todo: workflowManager.setClass(name, WorkflowClass)
+}
+
+func (wf *Workflow) IDFunc(idFunc func() string) *Workflow {
+	wf.ID = idFunc
+	return wf
+}
+
+func (wf *Workflow) WithOnEvent(onEvent func(string, interface{})) *Workflow {
+	wf.OnEvent = onEvent
+	return wf
 }
 
 func (wf *Workflow) Handle() interface{} {

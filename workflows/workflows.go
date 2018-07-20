@@ -11,92 +11,68 @@ import (
 )
 
 var (
-	SequentialWorkflow = workflow.Workflow{
-		Name: "SequentialWorkflow",
-		// this is ugly to have it have a return value
-		HandleFunc: func() interface{} {
-			tasks.TaskA.Execute()
-			tasks.TaskB.Execute()
-			return nil
-		},
-	}
+	SequentialWorkflow = workflow.New("SequentialWorkflow", func() interface{} {
+		tasks.TaskA.Execute()
+		tasks.TaskB.Execute()
+		return nil
+	})
 
-	AsynchronousWorkflow = workflow.Workflow{
-		Name: "AsynchronousWorkflow",
-		HandleFunc: func() interface{} {
-			tasks.TaskA.Dispatch()
-			tasks.TaskB.Execute()
-			return nil
-		},
-	}
+	AsynchronousWorkflow = workflow.New("AsynchronousWorkflow", func() interface{} {
+		tasks.TaskA.Dispatch()
+		tasks.TaskB.Execute()
+		return nil
+	})
 
-	ParallelWorkflow = workflow.Workflow{
-		Name: "ParallelWorkflow",
-		HandleFunc: func() interface{} {
-			runParallel := task.Tasks{
-				tasks.TaskA,
-				tasks.TaskB, tasks.TaskB, tasks.TaskB, tasks.TaskB,
-			}
-			outcomes := runParallel.Execute()
-			fmt.Println("outcomes: ", outcomes)
+	ParallelWorkflow = workflow.New("ParallelWorkflow", func() interface{} {
+		runParallel := task.Tasks{
+			tasks.TaskA,
+			tasks.TaskB, tasks.TaskB, tasks.TaskB, tasks.TaskB,
+		}
+		outcomes := runParallel.Execute()
+		fmt.Println("outcomes: ", outcomes)
+		tasks.TaskC.Execute()
+		return nil
+	})
+
+	EventWorkflow = workflow.New("EventWorkflow", func() interface{} {
+		tasks.TaskA.Execute()
+		tasks.TaskB.Execute()
+		//todo: ugly to have to return nil all the time, can I do better?
+		return nil
+	}).WithOnEvent(func(eventName string, eventData interface{}) {
+		if eventName == "MyEvent" {
 			tasks.TaskC.Execute()
-			return nil
-		},
-	}
+		}
+	}).IDFunc(func() string {
+		return "MyId"
+	})
 
-	EventWorkflow = workflow.Workflow{
-		Name: "EventWorkflow",
-		HandleFunc: func() interface{} {
+	WaitWorkflow = workflow.New("WaitWorkflow", func() interface{} {
+		// todo: figure out how to do something like this.email in javascript example
+		tasks.TaskA.Execute()
+		// todo: kind of ugly to pass in nil here
+		wait.New(nil).Seconds(5).Execute()
+		tasks.TaskB.Execute()
+		return nil
+	})
+
+	WaitEventWorkflow = workflow.New("WaitEventWorkflow", func() interface{} {
+
+		// Wait until the event or 4 seconds
+		event := wait.New("MyEvent").Seconds(4).Execute()
+
+		// If event has been triggered
+		if event != nil {
+			// Execute TaskB
 			tasks.TaskA.Execute()
+		} else {
+			// Execute Task B
 			tasks.TaskB.Execute()
-			//todo: ugly to have to return nil all the time, can I do better?
-			return nil
-		},
-		OnEvent: func(eventName string, eventData interface{}) {
-			if eventName == "MyEvent" {
-				tasks.TaskC.Execute()
-			}
-		},
-		//todo: do something sensible when you don't have an ID function
-		ID: func() string {
-			return "MyId"
-		},
-	}
-
-	WaitWorkflow = workflow.Workflow{
-		Name: "WaitWorkflow",
-		HandleFunc: func() interface{} {
-			// todo: figure out how to do something like this.email in javascript example
-			tasks.TaskA.Execute()
-			// todo: kind of ugly to pass in nil here
-			wait.New(nil).Seconds(5).Execute()
-			tasks.TaskB.Execute()
-			return nil
-		},
-	}
-
-	WaitEventWorkflow = workflow.Workflow{
-		Name: "WaitEventWorkflow",
-		HandleFunc: func() interface{} {
-
-			// Wait until the event or 4 seconds
-			event := wait.New("MyEvent").Seconds(4).Execute()
-
-			// If event has been triggered
-			if event != nil {
-				// Execute TaskB
-				tasks.TaskA.Execute()
-			} else {
-				// Execute Task B
-				tasks.TaskB.Execute()
-			}
-			return nil
-		},
-
-		ID: func() string {
-			return "MyId"
-		},
-	}
+		}
+		return nil
+	}).IDFunc(func() string {
+		return "MyId"
+	})
 
 	VersionWorkflow = version.New("VersionWorkflow", []*workflow.Workflow{
 		VersionWorkflow_v0,
