@@ -1,23 +1,21 @@
-package query
+package zenaton
 
-import "github.com/zenaton/zenaton-go/v1/zenaton/client"
-
-var instance *Builder
+var builderInstance *Builder
 
 type Builder struct {
 	WorkflowClass string
 	ID            string
-	Client        *client.Client
+	Client        *Client
 }
 
-func New(workflowClass string) *Builder {
-	if instance == nil {
-		instance = &Builder{
-			Client:        client.New(false),
+func NewBuilder(workflowClass string) *Builder {
+	if builderInstance == nil {
+		builderInstance = &Builder{
+			Client:        NewClient(false),
 			WorkflowClass: workflowClass,
 		}
 	}
-	return instance
+	return builderInstance
 }
 
 // do we want to have a different method for each type? or use this empty interface?

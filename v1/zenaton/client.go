@@ -1,13 +1,14 @@
-package client
+package zenaton
 
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strconv"
 
 	"io/ioutil"
 
-	"github.com/zenaton/zenaton-go/v1/zenaton/services/http"
+	"path"
 )
 
 const (
@@ -40,10 +41,10 @@ const (
 )
 
 var (
-	instance *Client
-	appID    string
-	apiToken string
-	appEnv   string
+	clientInstance *Client
+	appID          string
+	apiToken       string
+	appEnv         string
 )
 
 type Client struct {
@@ -54,18 +55,24 @@ func InitClient(appIDx, apiTokenx, appEnvx string) {
 	appID = appIDx
 	apiToken = apiTokenx
 	appEnv = appEnvx
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("No caller information")
+	}
+	directory := path.Dir(filename)
+	zenatonDirectory := directory[:len(directory)-len("/client")]
+	os.Setenv("ZENATON_LIBRARY_PATH", zenatonDirectory)
 
-	//todo?: //os.Setenv("ZENATON_LIBRARY_PATH", )
 }
 
-func New(worker bool) *Client {
+func NewClient(worker bool) *Client {
 	if instance != nil {
 		if !worker && (appID == "" || apiToken == "" || appEnv == "") {
 			//todo: produce error?
-			fmt.Println("Please initialize your Zenaton instance with your credentials")
+			panic("Please initialize your Zenaton instance with your credentials")
 			// throw new ExternalZenatonError('Please initialize your Zenaton instance with your credentials')
 		}
-		return instance
+		return clientInstance
 	}
 	return &Client{}
 }
@@ -86,7 +93,7 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string) interfa
 	body[ATTR_DATA] = "{}"
 	body[ATTR_ID] = customID
 
-	resp, err := http.Post(c.getInstanceWorkerUrl(""), body)
+	resp, err := Post(c.getInstanceWorkerUrl(""), body)
 	if err != nil {
 		panic(err)
 	}
@@ -110,7 +117,7 @@ func (c *Client) SendEvent(workflowName, customID, eventName string, eventData i
 	body[EVENT_NAME] = eventName
 	//todo: use serializer here
 	body[EVENT_INPUT] = "{}"
-	http.Post(url, body)
+	Post(url, body)
 }
 
 func (c *Client) getSendEventURL() string {

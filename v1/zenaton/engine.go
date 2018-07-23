@@ -1,22 +1,20 @@
-package engine
+package zenaton
 
 import (
 	"reflect"
-
-	"github.com/zenaton/zenaton-go/v1/zenaton/client"
 )
 
 var instance *Engine
 
 type Engine struct {
-	client    *client.Client
+	client    *Client
 	processor Processor //todo: not sure what type a processor should be
 }
 
-func New() *Engine {
+func NewEngine() *Engine {
 	if instance == nil {
 		instance = &Engine{
-			client: client.New(false),
+			client: NewClient(false),
 		}
 	}
 	return instance

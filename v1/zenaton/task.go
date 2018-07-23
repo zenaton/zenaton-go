@@ -1,6 +1,4 @@
-package task
-
-import "github.com/zenaton/zenaton-go/v1/zenaton/engine"
+package zenaton
 
 type Task struct {
 	Name       string
@@ -18,18 +16,18 @@ func (t *Task) AsyncHandle(channel chan interface{}) {
 }
 
 func (t *Task) Execute() interface{} {
-	e := engine.New()
-	return e.Execute([]engine.Job{t})
+	e := NewEngine()
+	return e.Execute([]Job{t})
 }
 
 func (t *Task) Dispatch() chan interface{} {
-	e := engine.New()
-	return e.Dispatch([]engine.Job{t})[0]
+	e := NewEngine()
+	return e.Dispatch([]Job{t})[0]
 }
 
 func (ts Tasks) Dispatch() chan interface{} {
-	e := engine.New()
-	var jobs []engine.Job
+	e := NewEngine()
+	var jobs []Job
 	for _, task := range ts {
 		jobs = append(jobs, task)
 	}
@@ -39,8 +37,8 @@ func (ts Tasks) Dispatch() chan interface{} {
 type Tasks []*Task
 
 func (ts Tasks) Execute() []interface{} {
-	e := engine.New()
-	var jobs []engine.Job
+	e := NewEngine()
+	var jobs []Job
 	for _, task := range ts {
 		jobs = append(jobs, task)
 	}

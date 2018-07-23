@@ -1,9 +1,7 @@
-package wait
-
-import "github.com/zenaton/zenaton-go/v1/zenaton/task"
+package zenaton
 
 type Wait struct {
-	task   *task.Task
+	task   *Task
 	buffer []duration
 }
 
@@ -12,9 +10,9 @@ type duration struct {
 	amount int64
 }
 
-func New(data interface{}) *Wait {
+func NewWait(data interface{}) *Wait {
 	return &Wait{
-		task: &task.Task{
+		task: &Task{
 			Name:       "_Wait",
 			Data:       data,
 			HandleFunc: func() interface{} { return nil },
