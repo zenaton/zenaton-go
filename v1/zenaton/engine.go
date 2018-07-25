@@ -8,7 +8,7 @@ var instance *Engine
 
 type Engine struct {
 	client    *Client
-	processor Processor //todo: not sure what type a processor should be
+	processor Processor
 }
 
 func NewEngine() *Engine {
@@ -64,7 +64,6 @@ func (e *Engine) Execute(jobs []Job) []interface{} {
 		return outputs
 	}
 
-	//todo: figure out the processor stuff
 	return e.processor.Process(jobs, true)
 }
 

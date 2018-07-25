@@ -3,31 +3,41 @@ package zenaton
 import "reflect"
 
 type Workflow struct {
-	// todo: maybe unexport these so you have to use the constructor functions?
 	data       interface{}
 	name       string
 	handleFunc interface{}
-	onEvent    func(string, interface{}) // todo: should this be an empty interface?
+	// must be Exported for worker library
+	OnEvent func(string, interface{}) // todo: have reflect checks on this input type and the data type on Send()
 	//todo: in Client.js it says that ID could either be a function or a field
 	//todo: do we need this to be a function? because it's kinda funny looking that way
 	id        func() string
 	canonical string
+	//todo: what to do with these?
+	OnStart   func(*Task)
+	OnSuccess func(*Task, interface{})
+	OnFailure func(*Task, error)
+	OnTimeout func(*Task)
 }
 
 func NewWorkflow(name string, handlfunc interface{}) *Workflow {
 	t := reflect.TypeOf(handlfunc)
 	if t.Kind() != reflect.Func {
-		panic("handler argument to NewWorkflow must by of kind function. instead it is of kind: " + t.Kind().String())
+		panic("handler argument to NewWorkflow must be a function. instead it is of kind: " + t.Kind().String())
 	}
 	if t.NumIn() > 1 {
 		panic("must take a maximum of 1 argument which will receive the data object associated with the workflow: " + t.Kind().String())
 	}
 
-	return &Workflow{
+	workflow := &Workflow{
 		name:       name,
 		handleFunc: handlfunc,
 	}
-	//todo: workflowManager.setClass(name, WorkflowClass)
+
+	// store this workflow in a singleton to retrieve it later
+	workflowManager := NewWorkflowManager()
+	workflowManager.setClass(name, workflow)
+
+	return workflow
 }
 
 func (wf *Workflow) IDFunc(idFunc func() string) *Workflow {
@@ -51,8 +61,12 @@ func (wf *Workflow) Data(data interface{}) *Workflow {
 	return wf
 }
 
+func (wf *Workflow) GetData() interface{} {
+	return wf.data
+}
+
 func (wf *Workflow) WithOnEvent(onEvent func(string, interface{})) *Workflow {
-	wf.onEvent = onEvent
+	wf.OnEvent = onEvent
 	return wf
 }
 
@@ -77,7 +91,7 @@ func (wf *Workflow) AsyncHandle(channel chan interface{}) {
 	if wf.id != nil {
 		id = wf.id()
 	}
-	channel <- c.StartWorkflow(wf.name, wf.canonical, id)
+	channel <- c.StartWorkflow(wf.name, wf.canonical, id, wf.data)
 }
 
 func (wf *Workflow) Dispatch() {
@@ -90,9 +104,8 @@ func (wf *Workflow) Execute() []interface{} {
 	return e.Execute([]Job{wf})
 }
 
-// todo: should the Builder returned here be a pointer?
 func (wf *Workflow) WhereID(id string) *Builder {
-	return NewBuilder(wf.name).WhereID(id)
+	return NewBuilder(wf).WhereID(id)
 }
 
 // todo: in js this is with an underscore in front, figure out why and make sure I'm copying functionality

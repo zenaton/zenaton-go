@@ -50,7 +50,6 @@ var (
 type Client struct {
 }
 
-// todo: figure out what's going on with the singleton thing in javascript
 func InitClient(appIDx, apiTokenx, appEnvx string) {
 	appID = appIDx
 	apiToken = apiTokenx
@@ -78,7 +77,7 @@ func NewClient(worker bool) *Client {
 }
 
 //todo: figure out how to handle errors
-func (c *Client) StartWorkflow(flowName, flowCanonical, customID string) interface{} {
+func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data interface{}) interface{} {
 
 	if len(customID) >= MAX_ID_SIZE {
 		//todo: handle this error better
@@ -89,8 +88,13 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string) interfa
 	body[ATTR_PROG] = PROG
 	//body[ATTR_CANONICAL] = flowCanonical
 	body[ATTR_NAME] = flowName
-	//todo: use serializer here as in js
-	body[ATTR_DATA] = "{}"
+
+	encodedData, err := Serializer{}.Encode(data)
+	if err != nil {
+		panic(err)
+	}
+
+	body[ATTR_DATA] = encodedData
 	body[ATTR_ID] = customID
 
 	resp, err := Post(c.getInstanceWorkerUrl(""), body)
@@ -115,8 +119,12 @@ func (c *Client) SendEvent(workflowName, customID, eventName string, eventData i
 	body[ATTR_NAME] = workflowName
 	body[ATTR_ID] = customID
 	body[EVENT_NAME] = eventName
-	//todo: use serializer here
-	body[EVENT_INPUT] = "{}"
+	encodedData, err := Serializer{}.Encode(eventData)
+	if err != nil {
+		panic(err)
+	}
+
+	body[EVENT_INPUT] = encodedData
 	Post(url, body)
 }
 
