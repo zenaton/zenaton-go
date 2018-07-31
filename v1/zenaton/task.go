@@ -44,3 +44,11 @@ func (ts Tasks) Execute() []interface{} {
 	}
 	return e.Execute(jobs)
 }
+
+func (t *Task) GetName() string {
+	return t.Name
+}
+
+func (t *Task) GetData() interface{} {
+	return t.Data
+}

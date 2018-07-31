@@ -1,5 +1,7 @@
 package zenaton
 
+import "fmt"
+
 var workflowManagerInstance *WorkflowManager
 
 type WorkflowManager struct {
@@ -12,12 +14,15 @@ func NewWorkflowManager() *WorkflowManager {
 			workflows: make(map[string]*Workflow),
 		}
 	}
+
+	fmt.Printf("workflowManagerInstance: address: %p \n", workflowManagerInstance)
+
 	return workflowManagerInstance
 }
 
 func (wfm *WorkflowManager) GetWorkflow(name, encodedData string) *Workflow {
 	// get workflow class
-	workflow := wfm.getClass(name)
+	workflow := wfm.GetClass(name)
 	// unserialize string data and update the workflow data field
 	err := Serializer{}.Decode(encodedData, &workflow.data)
 	if err != nil {
@@ -39,12 +44,12 @@ func (wfm *WorkflowManager) GetWorkflow(name, encodedData string) *Workflow {
 	return workflow
 }
 
-func (wfm *WorkflowManager) getClass(name string) *Workflow {
+func (wfm *WorkflowManager) GetClass(name string) *Workflow {
 	return wfm.workflows[name]
 }
 
 func (wfm *WorkflowManager) setClass(name string, workflow *Workflow) {
-	if wfm.getClass(name) != nil {
+	if wfm.GetClass(name) != nil {
 		panic(`"` + name + `" workflow can not be defined twice`)
 	}
 	wfm.workflows[name] = workflow

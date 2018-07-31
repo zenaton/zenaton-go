@@ -1,8 +1,6 @@
 package zenaton
 
-import (
-	"reflect"
-)
+import "reflect"
 
 var instance *Engine
 
@@ -24,6 +22,8 @@ func NewEngine() *Engine {
 type Job interface {
 	Handle() interface{}
 	AsyncHandle(chan interface{})
+	GetName() string
+	GetData() interface{}
 }
 
 type Processor interface {

@@ -61,10 +61,6 @@ func (wf *Workflow) Data(data interface{}) *Workflow {
 	return wf
 }
 
-func (wf *Workflow) GetData() interface{} {
-	return wf.data
-}
-
 func (wf *Workflow) WithOnEvent(onEvent func(string, interface{})) *Workflow {
 	wf.OnEvent = onEvent
 	return wf
@@ -87,11 +83,7 @@ func (wf *Workflow) Handle() interface{} {
 func (wf *Workflow) AsyncHandle(channel chan interface{}) {
 	c := NewClient(false)
 
-	id := ""
-	if wf.id != nil {
-		id = wf.id()
-	}
-	channel <- c.StartWorkflow(wf.name, wf.canonical, id, wf.data)
+	channel <- c.StartWorkflow(wf.name, wf.canonical, wf.GetCustomID(), wf.data)
 }
 
 func (wf *Workflow) Dispatch() {
@@ -115,4 +107,20 @@ func (wf *Workflow) GetCanonical() string {
 
 func (wf *Workflow) SetCanonical(canonical string) {
 	wf.canonical = canonical
+}
+
+func (wf *Workflow) GetName() string {
+	return wf.name
+}
+
+func (wf *Workflow) GetData() interface{} {
+	return wf.data
+}
+
+func (wf *Workflow) GetCustomID() string {
+	var id string
+	if wf.id != nil {
+		id = wf.id()
+	}
+	return id
 }

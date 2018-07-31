@@ -1,9 +1,16 @@
 package zenaton
 
+import "fmt"
+
 var taskManagerInstance *TaskManager
 
 type TaskManager struct {
 	tasks map[string]*Task
+}
+
+func init() {
+	taskManagerInstance = NewTaskManager()
+	fmt.Println("why does this print twice?")
 }
 
 func NewTaskManager() *TaskManager {
@@ -17,20 +24,20 @@ func NewTaskManager() *TaskManager {
 
 func (tm *TaskManager) setClass(name string, task *Task) {
 	// check that this task does not exist yet
-	if tm.getClass(name) != nil {
+	if tm.GetClass(name) != nil {
 		panic(`"` + name + `" task can not be defined twice`)
 	}
 
 	tm.tasks[name] = task
 }
 
-func (tm *TaskManager) getClass(name string) *Task {
+func (tm *TaskManager) GetClass(name string) *Task {
 	return tm.tasks[name]
 }
 
 func (tm *TaskManager) GetTask(name, encodedData string) *Task {
 	// get task class
-	task := tm.getClass(name)
+	task := tm.GetClass(name)
 	// unserialize data
 	err := Serializer{}.Decode(encodedData, &task.Data)
 	if err != nil {

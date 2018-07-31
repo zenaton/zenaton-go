@@ -16,7 +16,7 @@ func NewBuilder(workflow *Workflow) *Builder {
 		builderInstance = &Builder{
 			Client:        NewClient(false),
 			WorkflowClass: workflow.name,
-			workflow: workflow,
+			workflow:      workflow,
 		}
 	}
 	return builderInstance

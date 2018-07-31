@@ -129,14 +129,14 @@ func (c *Client) SendEvent(workflowName, customID, eventName string, eventData i
 }
 
 func (c *Client) getSendEventURL() string {
-	return c.getWorkerUrl("events", "")
+	return c.GetWorkerUrl("events", "")
 }
 
 func (c *Client) getInstanceWorkerUrl(params string) string {
-	return c.getWorkerUrl("instances", params)
+	return c.GetWorkerUrl("instances", params)
 }
 
-func (c *Client) getWorkerUrl(resources string, params string) string {
+func (c *Client) GetWorkerUrl(resources string, params string) string {
 	workerURL := os.Getenv("ZENATON_WORKER_URL")
 	if workerURL == "" {
 		workerURL = ZENATON_WORKER_URL
