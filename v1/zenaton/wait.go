@@ -13,14 +13,29 @@ type duration struct {
 func NewWait(data interface{}) *Wait {
 	return &Wait{
 		task: &Task{
-			Name:       "_Wait",
-			Data:       data,
-			HandleFunc: func() interface{} { return nil },
+			name:       "_Wait",
+			data:       data,
+			handleFunc: func() interface{} { return nil },
 		},
 	}
 }
 
-func (w *Wait) Execute() interface{} {
+// todo: shouldn't these path through to the task? maybe because Task is unexported?
+func (w *Wait) Handle() (interface{}, error) {
+	return w.task.Handle()
+}
+
+//func (w *Wait) AsyncHandle(myChan chan interface{}) {
+//	w.task.AsyncHandle(myChan)
+//}
+func (w *Wait) GetName() string {
+	return w.task.GetName()
+}
+func (w *Wait) GetData() interface{} {
+	return w.task.GetData()
+}
+
+func (w *Wait) Execute() (interface{}, error) {
 	return w.task.Execute()
 }
 

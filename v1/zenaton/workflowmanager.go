@@ -1,7 +1,5 @@
 package zenaton
 
-import "fmt"
-
 var workflowManagerInstance *WorkflowManager
 
 type WorkflowManager struct {
@@ -15,16 +13,21 @@ func NewWorkflowManager() *WorkflowManager {
 		}
 	}
 
-	fmt.Printf("workflowManagerInstance: address: %p \n", workflowManagerInstance)
-
 	return workflowManagerInstance
 }
 
+//todo: what's the difference between these two
 func (wfm *WorkflowManager) GetWorkflow(name, encodedData string) *Workflow {
 	// get workflow class
 	workflow := wfm.GetClass(name)
 	// unserialize string data and update the workflow data field
+
+	if encodedData == "" {
+		encodedData = "{}"
+	}
+
 	err := Serializer{}.Decode(encodedData, &workflow.data)
+
 	if err != nil {
 		panic(err)
 	}

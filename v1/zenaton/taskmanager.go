@@ -1,18 +1,12 @@
 package zenaton
 
-import "fmt"
-
 var taskManagerInstance *TaskManager
 
 type TaskManager struct {
 	tasks map[string]*Task
 }
 
-func init() {
-	taskManagerInstance = NewTaskManager()
-	fmt.Println("why does this print twice?")
-}
-
+//todo: problem, This shouldn't be accessible to the user
 func NewTaskManager() *TaskManager {
 	if taskManagerInstance == nil {
 		taskManagerInstance = &TaskManager{
@@ -39,7 +33,7 @@ func (tm *TaskManager) GetTask(name, encodedData string) *Task {
 	// get task class
 	task := tm.GetClass(name)
 	// unserialize data
-	err := Serializer{}.Decode(encodedData, &task.Data)
+	err := Serializer{}.Decode(encodedData, &task.data)
 	if err != nil {
 		panic(err)
 	}

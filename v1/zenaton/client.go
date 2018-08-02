@@ -77,7 +77,7 @@ func NewClient(worker bool) *Client {
 }
 
 //todo: figure out how to handle errors
-func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data interface{}) interface{} {
+func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data interface{}) error {
 
 	if len(customID) >= MAX_ID_SIZE {
 		//todo: handle this error better
@@ -89,12 +89,12 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 	//body[ATTR_CANONICAL] = flowCanonical
 	body[ATTR_NAME] = flowName
 
-	encodedData, err := Serializer{}.Encode(data)
-	if err != nil {
-		panic(err)
-	}
+	//encodedData, err := Serializer{}.Encode(data)
+	//if err != nil {
+	//	panic(err)
+	//}
 
-	body[ATTR_DATA] = encodedData
+	body[ATTR_DATA] = "{}"
 	body[ATTR_ID] = customID
 
 	resp, err := Post(c.getInstanceWorkerUrl(""), body)
@@ -103,12 +103,13 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 	}
 	defer resp.Body.Close()
 	respBody, err := ioutil.ReadAll(resp.Body)
+	//todo: panic? or return error?
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("respBody: ", string(respBody))
 	//todo: fix this
-	return "bob"
+	return nil
 }
 
 // todo: should this return something?

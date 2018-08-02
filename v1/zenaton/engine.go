@@ -1,7 +1,5 @@
 package zenaton
 
-import "reflect"
-
 var instance *Engine
 
 type Engine struct {
@@ -20,14 +18,13 @@ func NewEngine() *Engine {
 
 // todo: maybe I don't want this to be exported, so only tasks and workflows can implement this interface
 type Job interface {
-	Handle() interface{}
-	AsyncHandle(chan interface{})
+	Handle() (interface{}, error)
 	GetName() string
 	GetData() interface{}
 }
 
 type Processor interface {
-	Process([]Job, bool) []interface{}
+	Process([]Job, bool) ([]interface{}, error)
 }
 
 type chanResult struct {
@@ -35,52 +32,56 @@ type chanResult struct {
 	index  int
 }
 
-func wrapper(index int, outcome chan chanResult, handle func() interface{}) {
-	outcome <- chanResult{
-		index:  index,
-		result: handle(),
-	}
-}
-
 //todo: error handling
-func (e *Engine) Execute(jobs []Job) []interface{} {
+func (e *Engine) Execute(jobs []Job) ([]interface{}, error) {
 
 	// local execution
 	if e.processor == nil || len(jobs) == 0 {
-		outputChan := make(chan chanResult)
-		for i, job := range jobs {
-			go wrapper(i, outputChan, job.Handle)
-		}
 
-		outputs := make([]interface{}, len(jobs))
-		for range jobs {
-			o, ok := <-outputChan
-			if !ok {
-				break
+		var outputs []interface{}
+		var output interface{}
+		var err error
+
+		for _, job := range jobs {
+			output, err = job.Handle()
+			if err != nil {
+				return nil, err
 			}
-			outputs[o.index] = o.result
+			outputs = append(outputs, output)
 		}
 
-		return outputs
+		return outputs, nil
 	}
 
 	return e.processor.Process(jobs, true)
 }
 
-func (e *Engine) Dispatch(jobs []Job) []chan interface{} {
+func (e *Engine) Dispatch(jobs []Job) error {
 	// local execution
 	var chans []chan interface{}
 	for range jobs {
 		chans = append(chans, make(chan interface{}))
 	}
 
-	if !reflect.ValueOf(e.processor).IsValid() || len(jobs) == 0 {
-		for i, job := range jobs {
-			go job.AsyncHandle(chans[i])
+	if e.processor == nil || len(jobs) == 0 {
+
+		var err error
+
+		for _, job := range jobs {
+			switch v := job.(type) {
+			case *Task:
+				_, err = job.Handle()
+				if err != nil {
+					return err
+				}
+			case *Workflow:
+				err = e.client.StartWorkflow(v.name, v.canonical, v.GetCustomID(), v.data)
+			}
 		}
+		return nil
 	}
-	return chans
-	//todo: (figure out what to do with processor here) return e.processor.Process(jobs, false)
+	_, err := e.processor.Process(jobs, false)
+	return err
 }
 
 func (e *Engine) SetProcessor(processor Processor) {

@@ -2,6 +2,7 @@ package zenaton
 
 import "reflect"
 
+//todo: must call NewWorkflow to create this so that we can do validation. I'm not sure how to do that given that we must export fields for the worker library
 type Workflow struct {
 	data       interface{}
 	name       string
@@ -19,8 +20,53 @@ type Workflow struct {
 	OnTimeout func(*Task)
 }
 
-func NewWorkflow(name string, handlfunc interface{}) *Workflow {
-	t := reflect.TypeOf(handlfunc)
+type WorkflowParams struct {
+	Data interface{} //required
+	//todo: get the name from the function name like in cadence?
+	Name       string //required
+	HandleFunc interface{}
+	//todo: these should take the data object
+	OnEvent   func(name string, data interface{})
+	OnStart   func(*Task)
+	OnSuccess func(*Task, interface{})
+	OnFailure func(*Task, error)
+	OnTimeout func(*Task)
+	ID        func() string
+}
+
+func NewWorkflow(params WorkflowParams) *Workflow {
+
+	validateWorkflowParams(params)
+
+	workflow := &Workflow{
+		data:       params.Data,
+		name:       params.Name,
+		handleFunc: params.HandleFunc,
+		OnEvent:    params.OnEvent,
+		id:         params.ID,
+		OnStart:    params.OnStart,
+		OnSuccess:  params.OnSuccess,
+		OnFailure:  params.OnFailure,
+		OnTimeout:  params.OnTimeout,
+	}
+
+	workflowManager := NewWorkflowManager()
+	workflowManager.setClass(params.Name, workflow)
+
+	return workflow
+}
+
+//todo: handle onstart, onsuccess, onfailure, ontimeout
+//todo: should panic?
+func validateWorkflowParams(params WorkflowParams) error {
+	if params.Name == "" {
+		panic("must set a Name for the workflow")
+	}
+	if params.HandleFunc == nil {
+		panic("must set a HandleFunc for the workflow")
+	}
+
+	t := reflect.TypeOf(params.HandleFunc)
 	if t.Kind() != reflect.Func {
 		panic("handler argument to NewWorkflow must be a function. instead it is of kind: " + t.Kind().String())
 	}
@@ -28,70 +74,64 @@ func NewWorkflow(name string, handlfunc interface{}) *Workflow {
 		panic("must take a maximum of 1 argument which will receive the data object associated with the workflow: " + t.Kind().String())
 	}
 
-	workflow := &Workflow{
-		name:       name,
-		handleFunc: handlfunc,
+	// if Data is defined, the type of Data must be the same as the type of the reciever for HandleFunc
+	if params.Data != nil {
+
+		t := reflect.TypeOf(params.HandleFunc)
+		if t.NumIn() != 1 {
+			panic("if you specify a data field for a workflow, your handler function must have a receiver to accept that data" + t.Kind().String())
+		}
+		if t.In(0) != reflect.TypeOf(params.Data) {
+			panic("type of data must be the same as the parameter type of the handler function. Handler function type: " +
+				t.String() + " Data type: " + reflect.TypeOf(params.Data).String())
+		}
 	}
 
-	// store this workflow in a singleton to retrieve it later
-	workflowManager := NewWorkflowManager()
-	workflowManager.setClass(name, workflow)
-
-	return workflow
-}
-
-func (wf *Workflow) IDFunc(idFunc func() string) *Workflow {
-	wf.id = idFunc
-	return wf
-}
-
-//todo: allow this to take multiple arguments, so they don't have to build a struct to make this work?
-func (wf *Workflow) Data(data interface{}) *Workflow {
-
-	t := reflect.TypeOf(wf.handleFunc)
-	if t.NumIn() != 1 {
-		panic("if you specify a data field for a workflow, your handler function must have a receiver to accept that data" + t.Kind().String())
-	}
-	if t.In(0) != reflect.TypeOf(data) {
-		panic("type of data must be the same as the parameter type of the handler function. Handler function type: " +
-			t.String() + " Data type: " + reflect.TypeOf(data).String())
-	}
-
-	wf.data = data
-	return wf
-}
-
-func (wf *Workflow) WithOnEvent(onEvent func(string, interface{})) *Workflow {
-	wf.OnEvent = onEvent
-	return wf
-}
-
-func (wf *Workflow) Handle() interface{} {
-
-	handlFuncValue := reflect.ValueOf(wf.handleFunc)
-	handlFuncType := reflect.TypeOf(wf.handleFunc)
-	if handlFuncType.NumIn() > 0 {
-		in := []reflect.Value{reflect.ValueOf(wf.data)}
-		return handlFuncValue.Call(in)
-	} else {
-		handlFuncValue.Call(nil)
-	}
-	//todo: fix this so that it actually returns something. I like the way "go.uber.org/cadence/internal/internal_workflow.go:1160" does it
 	return nil
 }
 
-func (wf *Workflow) AsyncHandle(channel chan interface{}) {
-	c := NewClient(false)
+func (wf *Workflow) Handle() (interface{}, error) {
 
-	channel <- c.StartWorkflow(wf.name, wf.canonical, wf.GetCustomID(), wf.data)
+	handlFuncValue := reflect.ValueOf(wf.handleFunc)
+	handlFuncType := reflect.TypeOf(wf.handleFunc)
+
+	var in []reflect.Value
+	if handlFuncType.NumIn() > 0 {
+		in = []reflect.Value{reflect.ValueOf(wf.data)}
+	}
+
+	values := handlFuncValue.Call(in)
+
+	var err error
+
+	if len(values) == 0 {
+		return nil, nil
+	}
+
+	if !values[len(values)-1].IsNil() {
+		err = values[len(values)-1].Interface().(error)
+	}
+
+	if len(values) == 1 {
+		return nil, err
+	}
+
+	return values[0].Interface(), err
 }
 
-func (wf *Workflow) Dispatch() {
+//func (wf *Workflow) AsyncHandle(channel chan interface{}) {
+//	c := NewClient(false)
+//
+//	channel <- c.StartWorkflow(wf.name, wf.canonical, wf.GetCustomID(), wf.data)
+//}
+
+//todo: should this ever return anything? it seems to be only called form user code and all it does is send an http request. In php for example, there is no return here, just a an exception if the http request doesn't work
+func (wf *Workflow) Dispatch() error {
 	e := NewEngine()
-	e.Dispatch([]Job{wf})
+	return e.Dispatch([]Job{wf})
 }
 
-func (wf *Workflow) Execute() []interface{} {
+func (wf *Workflow) Execute() ([]interface{}, error) {
 	e := NewEngine()
 	return e.Execute([]Job{wf})
 }
@@ -115,6 +155,10 @@ func (wf *Workflow) GetName() string {
 
 func (wf *Workflow) GetData() interface{} {
 	return wf.data
+}
+
+func (wf *Workflow) SetData(data interface{}) {
+	wf.data = data
 }
 
 func (wf *Workflow) GetCustomID() string {
