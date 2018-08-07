@@ -8,6 +8,7 @@ import (
 
 	"io/ioutil"
 
+	"errors"
 	"path"
 )
 
@@ -76,6 +77,23 @@ func NewClient(worker bool) *Client {
 	return &Client{}
 }
 
+func (c *Client) GetWorkerUrl(resources string, params string) string {
+	workerURL := os.Getenv("ZENATON_WORKER_URL")
+	if workerURL == "" {
+		workerURL = ZENATON_WORKER_URL
+	}
+
+	workerPort := os.Getenv("ZENATON_WORKER_PORT")
+	if workerPort == "" {
+		workerPort = strconv.Itoa(DEFAULT_WORKER_PORT)
+	}
+
+	url := workerURL + ":" + workerPort + "/api/" + WORKER_API_VERSION +
+		"/" + resources + "?"
+
+	return c.addAppEnv(url, params)
+}
+
 //todo: figure out how to handle errors
 func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data interface{}) error {
 
@@ -86,15 +104,23 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 
 	body := make(map[string]interface{})
 	body[ATTR_PROG] = PROG
-	//body[ATTR_CANONICAL] = flowCanonical
+	body[ATTR_CANONICAL] = flowCanonical
 	body[ATTR_NAME] = flowName
 
-	//encodedData, err := Serializer{}.Encode(data)
-	//if err != nil {
-	//	panic(err)
-	//}
+	var encodedData string
+	var err error
 
-	body[ATTR_DATA] = "{}"
+	if data == nil {
+		encodedData = "{}"
+	} else {
+		serializer := &Serializer{}
+		encodedData, err = serializer.Encode(data)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	body[ATTR_DATA] = encodedData
 	body[ATTR_ID] = customID
 
 	resp, err := Post(c.getInstanceWorkerUrl(""), body)
@@ -112,6 +138,30 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 	return nil
 }
 
+func (c *Client) killWorkflow(workflowName, customId string) error {
+	err := c.updateInstance(workflowName, customId, WORKFLOW_KILL)
+	if err != nil {
+		return errors.New(fmt.Sprint("unable to kill workflow: ", workflowName, " error: ", err.Error()))
+	}
+	return nil
+}
+
+func (c *Client) pauseWorkflow(workflowName, customId string) error {
+	err := c.updateInstance(workflowName, customId, WORKFLOW_PAUSE)
+	if err != nil {
+		return errors.New(fmt.Sprint("unable to pause workflow: ", workflowName, " error: ", err.Error()))
+	}
+	return nil
+}
+
+func (c *Client) resumeWorkflow(workflowName, customId string) error {
+	err := c.updateInstance(workflowName, customId, WORKFLOW_RUN)
+	if err != nil {
+		return errors.New(fmt.Sprint("unable to resume workflow: ", workflowName, " error: ", err.Error()))
+	}
+	return nil
+}
+
 // todo: should this return something?
 func (c *Client) SendEvent(workflowName, customID, eventName string, eventData interface{}) {
 	var url = c.getSendEventURL()
@@ -120,7 +170,8 @@ func (c *Client) SendEvent(workflowName, customID, eventName string, eventData i
 	body[ATTR_NAME] = workflowName
 	body[ATTR_ID] = customID
 	body[EVENT_NAME] = eventName
-	encodedData, err := Serializer{}.Encode(eventData)
+	serializer := &Serializer{}
+	encodedData, err := serializer.Encode(eventData)
 	if err != nil {
 		panic(err)
 	}
@@ -129,29 +180,22 @@ func (c *Client) SendEvent(workflowName, customID, eventName string, eventData i
 	Post(url, body)
 }
 
+func (c *Client) updateInstance(workflowName, customId, mode string) error {
+	var params = ATTR_ID + "=" + customId
+	var body = make(map[string]interface{})
+	body[ATTR_PROG] = PROG
+	body[ATTR_NAME] = workflowName
+	body[ATTR_MODE] = mode
+	_, err := Put(c.getInstanceWorkerUrl(params), body)
+	return err
+}
+
 func (c *Client) getSendEventURL() string {
 	return c.GetWorkerUrl("events", "")
 }
 
 func (c *Client) getInstanceWorkerUrl(params string) string {
 	return c.GetWorkerUrl("instances", params)
-}
-
-func (c *Client) GetWorkerUrl(resources string, params string) string {
-	workerURL := os.Getenv("ZENATON_WORKER_URL")
-	if workerURL == "" {
-		workerURL = ZENATON_WORKER_URL
-	}
-
-	workerPort := os.Getenv("ZENATON_WORKER_PORT")
-	if workerPort == "" {
-		workerPort = strconv.Itoa(DEFAULT_WORKER_PORT)
-	}
-
-	url := workerURL + ":" + workerPort + "/api/" + WORKER_API_VERSION +
-		"/" + resources + "?"
-
-	return c.addAppEnv(url, params)
 }
 
 func (c *Client) addAppEnv(url, params string) string {

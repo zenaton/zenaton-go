@@ -35,6 +35,7 @@ func NewTask(params TaskParams) *Task {
 }
 
 //todo: should I panic here?
+//todo: should I really require that you return an error?
 func validateTaskParams(params TaskParams) {
 	if params.Name == "" {
 		panic("must set a Name for the task")
@@ -126,11 +127,7 @@ func (t *Task) Handle() (interface{}, error) {
 	return values[0].Interface(), err
 }
 
-//func (t *Task) AsyncHandle(channel chan interface{}) {
-//	//channel <- t.HandleFunc()
-//}
-
-//todo: would be great if we could take a pointer to execute an modify that like json.unmarshal does, but it's hard to figure out how they do it
+//todo: would be great if we could take a pointer to execute and modify that like json.unmarshal does, but it's hard to figure out how they do it
 func (t *Task) Execute() (interface{}, error) {
 	e := NewEngine()
 	output, err := e.Execute([]Job{t})

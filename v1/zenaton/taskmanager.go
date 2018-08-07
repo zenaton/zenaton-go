@@ -33,7 +33,8 @@ func (tm *TaskManager) GetTask(name, encodedData string) *Task {
 	// get task class
 	task := tm.GetClass(name)
 	// unserialize data
-	err := Serializer{}.Decode(encodedData, &task.data)
+	serializer := &Serializer{}
+	err := serializer.Decode(encodedData, &task.data)
 	if err != nil {
 		panic(err)
 	}

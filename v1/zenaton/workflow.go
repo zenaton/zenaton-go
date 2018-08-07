@@ -14,10 +14,11 @@ type Workflow struct {
 	id        func() string
 	canonical string
 	//todo: what to do with these?
-	OnStart   func(*Task)
-	OnSuccess func(*Task, interface{})
-	OnFailure func(*Task, error)
-	OnTimeout func(*Task)
+	OnStart               func(*Task)
+	OnSuccess             func(*Task, interface{})
+	OnFailure             func(*Task, error)
+	OnTimeout             func(*Task)
+	shouldExecuteNextTask bool
 }
 
 type WorkflowParams struct {
@@ -39,15 +40,16 @@ func NewWorkflow(params WorkflowParams) *Workflow {
 	validateWorkflowParams(params)
 
 	workflow := &Workflow{
-		data:       params.Data,
-		name:       params.Name,
-		handleFunc: params.HandleFunc,
-		OnEvent:    params.OnEvent,
-		id:         params.ID,
-		OnStart:    params.OnStart,
-		OnSuccess:  params.OnSuccess,
-		OnFailure:  params.OnFailure,
-		OnTimeout:  params.OnTimeout,
+		data:                  params.Data,
+		name:                  params.Name,
+		handleFunc:            params.HandleFunc,
+		OnEvent:               params.OnEvent,
+		id:                    params.ID,
+		OnStart:               params.OnStart,
+		OnSuccess:             params.OnSuccess,
+		OnFailure:             params.OnFailure,
+		OnTimeout:             params.OnTimeout,
+		shouldExecuteNextTask: true,
 	}
 
 	workflowManager := NewWorkflowManager()
@@ -122,7 +124,7 @@ func (wf *Workflow) Handle() (interface{}, error) {
 //func (wf *Workflow) AsyncHandle(channel chan interface{}) {
 //	c := NewClient(false)
 //
-//	channel <- c.StartWorkflow(wf.name, wf.canonical, wf.GetCustomID(), wf.data)
+//	channel <- c.startWorkflow(wf.name, wf.canonical, wf.GetCustomID(), wf.data)
 //}
 
 //todo: should this ever return anything? it seems to be only called form user code and all it does is send an http request. In php for example, there is no return here, just a an exception if the http request doesn't work
@@ -134,10 +136,6 @@ func (wf *Workflow) Dispatch() error {
 func (wf *Workflow) Execute() ([]interface{}, error) {
 	e := NewEngine()
 	return e.Execute([]Job{wf})
-}
-
-func (wf *Workflow) WhereID(id string) *Builder {
-	return NewBuilder(wf).WhereID(id)
 }
 
 // todo: in js this is with an underscore in front, figure out why and make sure I'm copying functionality
@@ -167,4 +165,20 @@ func (wf *Workflow) GetCustomID() string {
 		id = wf.id()
 	}
 	return id
+}
+
+func (wf *Workflow) WhereID(id string) *Builder {
+	return NewBuilder(wf).WhereID(id)
+}
+
+func (wf *Workflow) Kill() *Builder {
+	return NewBuilder(wf).Kill()
+}
+
+func (wf *Workflow) Pause() *Builder {
+	return NewBuilder(wf).Pause()
+}
+
+func (wf *Workflow) Resume() *Builder {
+	return NewBuilder(wf).Resume()
 }

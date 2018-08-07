@@ -78,8 +78,10 @@ func (e *Engine) Dispatch(jobs []Job) error {
 				err = e.client.StartWorkflow(v.name, v.canonical, v.GetCustomID(), v.data)
 			}
 		}
+
 		return nil
 	}
+
 	_, err := e.processor.Process(jobs, false)
 	return err
 }

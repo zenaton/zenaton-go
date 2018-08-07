@@ -26,7 +26,8 @@ func (wfm *WorkflowManager) GetWorkflow(name, encodedData string) *Workflow {
 		encodedData = "{}"
 	}
 
-	err := Serializer{}.Decode(encodedData, &workflow.data)
+	serializer := &Serializer{}
+	err := serializer.Decode(encodedData, &workflow.data)
 
 	if err != nil {
 		panic(err)

@@ -3,7 +3,6 @@ package zenaton
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 )
 
@@ -19,15 +18,20 @@ func Post(url string, body interface{}) (*http.Response, error) {
 		return nil, err
 	}
 
-	fmt.Println(string(jsonBody), url)
 	return http.Post(url, "application/json", bytes.NewBuffer(jsonBody))
 }
 
-//
-//func Put(url string, body interface{})(*http.Response, error){
-//	jsonBody, err := json.Marshal(body)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return http.(url, "application/json", bytes.NewBuffer(jsonBody))
-//}
+func Put(url string, body interface{}) (*http.Response, error) {
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	return http.DefaultClient.Do(req)
+}
