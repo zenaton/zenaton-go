@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 const (
 	ID_PREFIX             = "@zenaton#"
 	KEY_OBJECT            = "o" // JSON key for objects
 	KEY_OBJECT_NAME       = "n" // JSON key for class name
-	KEY_OBJECT_PROPERTIES = "p" // JSON key for object ivars
+	KEY_OBJECT_PROPERTIES = "p" // JSON key for object vars
 	KEY_ARRAY             = "a" // JSON key for array and hashes
 	KEY_DATA              = "d" // JSON key for json compatibles types
 	KEY_STORE             = "s" // JSON key for deserialized complex object
@@ -90,18 +91,19 @@ func (s *Serializer) encodeArray(a []interface{}) []interface{} {
 func (s *Serializer) encodeObject(o interface{}) string {
 
 	id := indexOf(o, s.decoded)
-	fmt.Println("id: ", id)
 
+	fmt.Println(id)
 	if id == -1 {
 		dataT := reflect.TypeOf(o)
 		id = len(s.decoded)
 
-		s.decoded = append(s.decoded, o)
+		s.decoded = insert(s.decoded, o, id)
 		newEncoded := Object{
 			Name:       dataT.Name(),
 			Properties: s.encodeProperties(o),
 		}
-		s.encoded = append(s.encoded, newEncoded)
+
+		s.encoded = insert(s.encoded, newEncoded, id)
 	}
 
 	return ID_PREFIX + strconv.Itoa(id)
@@ -114,7 +116,7 @@ func (s *Serializer) encodeProperties(o interface{}) map[string]interface{} {
 	for i := 0; i < dataV.NumField(); i++ {
 		key := dataT.Field(i).Name
 		//todo: handle the other cases
-		fmt.Println("kind: ", reflect.Indirect(dataV.Field(i)).Kind())
+		//fmt.Println("kind: ", reflect.Indirect(dataV.Field(i)).Kind())
 		switch reflect.Indirect(dataV.Field(i)).Kind() {
 		case reflect.Struct:
 			value := reflect.Indirect(dataV.Field(i)).Interface()
@@ -138,80 +140,95 @@ func indexOf(item interface{}, slice []interface{}) int {
 func (s *Serializer) Decode(data string, value interface{}) error {
 	////todo: handle race conditions
 	//
-	//var v map[string]interface{}
-	//err := json.Unmarshal([]byte(data), &v)
-	//
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//s.decoded = []interface{}{}
-	//s.encoded = v[KEY_STORE].([]interface{})
-	//
-	//id, ok := v[KEY_OBJECT]
-	//if ok {
-	//	idInt, err := strconv.Atoi(strings.TrimLeft(id.(string), ID_PREFIX))
-	//	if err != nil {
-	//		return err
-	//	}
-	//	s.decodeObject(idInt, s.encoded[idInt], value)
-	//	return nil
-	//}
-	//
-	//fmt.Println("v, err", v, err)
+	var v map[string]interface{}
+	err := json.Unmarshal([]byte(data), &v)
+
+	if err != nil {
+		return err
+	}
+
+	s.decoded = []interface{}{}
+	s.encoded = v[KEY_STORE].([]interface{})
+
+	id, ok := v[KEY_OBJECT]
+	if ok {
+		idInt, err := strconv.Atoi(strings.TrimLeft(id.(string), ID_PREFIX))
+		if err != nil {
+			return err
+		}
+		s.decodeObject(idInt, s.encoded[idInt], value)
+		return nil
+	}
+
+	fmt.Println("v, err", v, err)
 	return nil
 }
 
-func (s *Serializer) DecodeObject() {
-	//dataV := reflect.ValueOf(decodeTo)
-	//reflect.Struct
-	//obj := encodedObject.(Object)
-	//for key, value := range obj.Properties {
-	//	switch dataV.Kind() {
-	//	case reflect.Bool:
-	//		fmt.Println("hi")
-	//		dataV.Elem().FieldByName(key).SetBool(value.(bool))
-	//	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-	//		dataV.Elem().FieldByName(key).SetInt(value.(int64))
-	//	case reflect.Uint:
-	//	case reflect.Uint8:
-	//	case reflect.Uint16:
-	//	case reflect.Uint32:
-	//	case reflect.Uint64:
-	//	case reflect.Uintptr:
-	//	case reflect.Float32:
-	//	case reflect.Float64:
-	//		//case reflect.Complex64:
-	//		//case reflect.Complex128:
-	//		//case reflect.Array:
-	//		//case reflect.Chan:
-	//		//case reflect.Func:
-	//		//case reflect.Interface:
-	//		//case reflect.Map:
-	//		//case reflect.Ptr:
-	//		//case reflect.Slice:
-	//		//case reflect.String:
-	//		//case reflect.Struct:
-	//		//case reflect.UnsafePointer:
-	//		//default:
-	//	}
-	//
-	//}
-	//
-	////	value := dataV.Field(i).Interface()
-	////
-	////	obj := Object{
-	////		N: dataT.Name(),
-	////		P: map[string]interface{}{
-	////			dataT.Field(i).Name: value,
-	////		},
-	////	}
-	////	objs = append(objs, obj)
-	////todo: is this right?
-	//fmt.Printf("id: %+v\n encodedObject: %+v\n decodeTo: %+v\n", id, encodedObject, decodeTo)
-	//
-	//if len(s.decoded) > id {
-	//	return s.decoded[id]
-	//}
-	//return nil
+func (s *Serializer) decodeObject(id int, encodedObject interface{}, decodeTo interface{}) {
+
+	fmt.Printf("id: %+v\n encodedObject: %+v\n decodeTo: %+v\n", id, encodedObject, decodeTo)
+	if len(s.decoded) > id {
+		decodeTo = s.decoded[id]
+		return
+	}
+
+	//todo: this only works with ptr value, make sure that is always going to be the case
+	o := encodedObject.(map[string]interface{})
+	s.decoded = append(s.decoded, o)
+
+	dataV := reflect.ValueOf(decodeTo)
+	for key, value := range o[KEY_OBJECT_PROPERTIES].(map[string]interface{}) {
+
+		fmt.Println("reflect.Indirect(reflect.Indirect(dataV).FieldByName(key)).Kind()", reflect.Indirect(reflect.Indirect(dataV).FieldByName(key)).Kind(), value)
+		if reflect.Indirect(reflect.Indirect(dataV).FieldByName(key)).Kind() == reflect.Invalid {
+			fmt.Println("my pointerzzzzzzz: ", dataV.Elem().FieldByName(key).Kind())
+		}
+		dataVField := reflect.Indirect(dataV.Elem().FieldByName(key))
+		switch dataVField.Kind() {
+		case reflect.Bool:
+			dataVField.SetBool(value.(bool))
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			dataVField.SetInt(int64(value.(float64)))
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			dataVField.SetUint(uint64(value.(float64)))
+		case reflect.Float32, reflect.Float64:
+			dataVField.SetFloat(value.(float64))
+		//todo: this is not supported by json i guess?
+		//case reflect.Complex64, reflect.Complex128:
+		//	var c complex128
+		//	str := fmt.Sprintf(`"%s"`, value.(string))
+		//	err := json.Unmarshal([]byte(str), &c)
+		//	if err != nil {
+		//		//todo: panic?
+		//		panic(err)
+		//	}
+		//	dataVField.SetComplex(c)
+		case reflect.String:
+			dataVField.SetString(value.(string))
+			//todo:
+		//case reflect.Uintptr:
+		//case reflect.Array:
+		//case reflect.Chan:
+		//case reflect.Func:
+		//case reflect.Interface:
+		//case reflect.Map:
+		//case reflect.Ptr:
+		//case reflect.Slice:
+		case reflect.Struct:
+			dataVField.Set(reflect.ValueOf(value))
+			//case reflect.UnsafePointer:
+			//default:
+		}
+	}
+}
+
+func insert(arr []interface{}, value interface{}, i int) []interface{} {
+	if len(arr) > i {
+		arr[i] = value
+		return arr
+	}
+	newArr := make([]interface{}, i+1)
+	copy(newArr, arr)
+	newArr[i] = value
+	return newArr
 }

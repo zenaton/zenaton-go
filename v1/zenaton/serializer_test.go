@@ -139,7 +139,7 @@ var _ = Describe("Encode", func() {
 	Context("with a struct with circular dependencies", func() {
 		It("represents the struct as an object", func() {
 
-			expectedSerialized := `{"o":"@zenaton#0","s":[{"n":"Person","p":{"Child":null,"Parent":"@zenaton#0"}},{"n":"Person","p":{"Child":"@zenaton#1","Parent":null}}]}`
+			expectedSerialized := `{"o":"@zenaton#0","s":[{"n":"Person","p":{"Child":"@zenaton#1","Parent":null}},{"n":"Person","p":{"Child":null,"Parent":"@zenaton#0"}}]}`
 			parent := Person{}
 			child := Person{
 				Parent: &parent,
@@ -148,14 +148,87 @@ var _ = Describe("Encode", func() {
 
 			encoded, err := s.Encode(parent)
 			Expect(err).ToNot(HaveOccurred())
+			fmt.Println("encoded: ", encoded)
 			Expect(encoded).To(Equal(expectedSerialized))
 		})
 	})
 
+	//todo test with unexported fields!
+	type MySimpleStruct struct {
+		Bool    bool
+		Int     int
+		Int8    int8
+		Int16   int16
+		Int32   int32
+		Int64   int64
+		Uint    uint
+		Uint8   uint8
+		Uint16  uint16
+		Uint32  uint32
+		Uint64  uint64
+		Float32 float32
+		Float64 float64
+		String  string
+		Ptr     *string
+		//todo:?
+		//Array [1]string
+		//Uintptr uintptr
+		//Interface interface{}
+		//Map map[string]interface{}
+		//Slice []string
+		//Struct struct
+		//UnsafePointer unsafePointer
+	}
+
 	Describe("decode", func() {
 		s := &zenaton.Serializer{}
-		Context("with a simple object", func() {
-			XIt("returns an instance with the correct instance variables", func() {
+		Context("with a simple struct", func() {
+			FIt("returns an instance with the correct instance variables", func() {
+
+				pointed := "a"
+				mySimpleStruct := MySimpleStruct{
+					Bool:    true,
+					Int:     1,
+					Int8:    1,
+					Int16:   1,
+					Int32:   1,
+					Int64:   1,
+					Uint:    1,
+					Uint8:   1,
+					Uint16:  1,
+					Uint32:  1,
+					Uint64:  1,
+					Float32: 1.1,
+					Float64: 1.1,
+					String:  "a",
+					Ptr:     &pointed,
+				}
+
+				encoded := `{
+							   "o":"@zenaton#0",
+							   "s":[
+								  {
+									 "n":"MySimpleStruct",
+									 "p":{
+										"Bool":true,
+										"Int":1,
+										"Int8":1,
+										"Int16":1,
+										"Int32":1,
+										"Int64":1,
+										"Uint":1,
+										"Uint8":1,
+										"Uint16":1,
+										"Uint32":1,
+										"Uint64":1,
+										"Float32":1.1,
+										"Float64":1.1,
+										"String":"a",
+										"Ptr":"a"
+									 }
+								  }
+							   ]
+							}`
 				//type MyInt struct {
 				//	Int int8
 				//}
@@ -169,11 +242,10 @@ var _ = Describe("Encode", func() {
 				//err = json.Unmarshal(jsonMyInt, &myInt2)
 				//Expect(err).NotTo(HaveOccurred())
 
-				str := `{"o":"@zenaton#0","s":[{"n":"SerializeMe","p":{"Initialized":true}}]}`
-				var value SerializeMe
-				err := s.Decode(str, &value)
+				var encodedStruct MySimpleStruct
+				err := s.Decode(encoded, &encodedStruct)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(value).To(Equal(SerializeMe{true}))
+				Expect(encodedStruct).To(Equal(mySimpleStruct))
 			})
 		})
 	})
