@@ -82,17 +82,43 @@ var _ = Describe("Encode", func() {
 	})
 
 	Context("with a simple array", func() {
-		XIt("represents the array as an array", func() {
+		It("represents the array as an array", func() {
 			arr := []interface{}{1, "e"}
 			encoded, err := s.Encode(arr)
 			Expect(err).ToNot(HaveOccurred())
 			fmt.Println(encoded)
-			Expect(encoded).To(Equal(`{"a":[1,"e"],"s":[]}`))
+			Expect(encoded).To(Equal(`{"o":"@zenaton#0","s":[{"a":[1,"e"]}]}`))
 		})
 	})
 
-	Context("with recursive arrays", func() {
-		XIt("represents the array as an array", func() {
+	//context 'with recursive arrays' do
+	//  let(:array1) { [1, 2, 3] }
+	//  let(:array2) { [4, 5, 6] }
+	//  let(:data) { array1 }
+	//  let(:expected_representation) do
+	//    {
+	//      'o' => '@zenaton#0',
+	//      's' => [{
+	//        'a' => [1, 2, 3, '@zenaton#1']
+	//      }, {
+	//        'a' => [4, 5, 6, '@zenaton#0']
+	//      }]
+	//    }
+	//  end
+	//
+	//  before do
+	//    array1 << array2
+	//    array2 << array1
+	//  end
+	//
+	//  it 'represents the array as an object' do
+	//    expect(parsed_json).to eq(expected_representation)
+	//  end
+	//
+
+	FContext("with recursive arrays", func() {
+		It("represents the array as an array", func() {
+			expectedOutput := `{"o":"@zenaton#0","s":[{"a":["@zenaton#1"]},{"a":["@zenaton#0"]}]}`
 			var arr1 []interface{}
 			var arr2 []interface{}
 			arr1 = append(arr1, &arr2)
@@ -101,12 +127,12 @@ var _ = Describe("Encode", func() {
 			encoded, err := s.Encode(arr1)
 			Expect(err).ToNot(HaveOccurred())
 			fmt.Println(encoded)
-			Expect(encoded).To(Equal(`{"a":[1,"e"],"s":[]}`))
+			Expect(encoded).To(Equal(expectedOutput))
 		})
 	})
 
 	//todo: this needs to be different, as maps can have pointer keys and values
-	Context("with an map", func() {
+	XContext("with an map", func() {
 		It("represents the map as an map", func() {
 			m := map[string]string{
 				"key": "value",
@@ -154,6 +180,8 @@ var _ = Describe("Encode", func() {
 	})
 
 	//todo test with unexported fields!
+
+	//todo: make sure that it handles unexported fields well.
 	type MySimpleStruct struct {
 		Bool    bool
 		Int     int
@@ -169,7 +197,7 @@ var _ = Describe("Encode", func() {
 		Float32 float32
 		Float64 float64
 		String  string
-		Ptr     *string
+		Ptr     **string
 		//todo:?
 		//Array [1]string
 		//Uintptr uintptr
@@ -179,13 +207,13 @@ var _ = Describe("Encode", func() {
 		//Struct struct
 		//UnsafePointer unsafePointer
 	}
-
 	Describe("decode", func() {
-		s := &zenaton.Serializer{}
+		//s := &zenaton.Serializer{}
 		Context("with a simple struct", func() {
-			FIt("returns an instance with the correct instance variables", func() {
+			It("returns an instance with the correct instance variables", func() {
 
 				pointed := "a"
+				pointed2 := &pointed
 				mySimpleStruct := MySimpleStruct{
 					Bool:    true,
 					Int:     1,
@@ -201,7 +229,7 @@ var _ = Describe("Encode", func() {
 					Float32: 1.1,
 					Float64: 1.1,
 					String:  "a",
-					Ptr:     &pointed,
+					Ptr:     &pointed2,
 				}
 
 				encoded := `{
@@ -229,19 +257,6 @@ var _ = Describe("Encode", func() {
 								  }
 							   ]
 							}`
-				//type MyInt struct {
-				//	Int int8
-				//}
-				//
-				//myInt := MyInt{5}
-				//
-				//jsonMyInt, err := json.Marshal(myInt)
-				//Expect(err).NotTo(HaveOccurred())
-				//
-				//var myInt2 MyInt
-				//err = json.Unmarshal(jsonMyInt, &myInt2)
-				//Expect(err).NotTo(HaveOccurred())
-
 				var encodedStruct MySimpleStruct
 				err := s.Decode(encoded, &encodedStruct)
 				Expect(err).ToNot(HaveOccurred())

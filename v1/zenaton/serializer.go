@@ -6,6 +6,10 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"errors"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 const (
@@ -30,35 +34,30 @@ type Object struct {
 
 //todo: is this enough? what about the recursive case?
 //todo: make sure anonomous structs work
-//todo: make sure maps with other things as keys work
+//todo: make sure maps with other things besides strings as keys work
 
 func (s *Serializer) Encode(data interface{}) (string, error) {
+
+	kind := reflect.Indirect(reflect.ValueOf(data)).Kind()
+	isValid := validType(kind)
+	if !isValid {
+		return "", errors.New(fmt.Sprintf("cannot encode data of kind: %s", kind.String()))
+	}
 
 	s.encoded = []interface{}{}
 	s.decoded = []interface{}{}
 
 	value := make(map[string]interface{})
 
-	if reflect.TypeOf(data) == nil {
+	//todo: handle pointers to values
+	//todo: handle interfaces
+	if basicType(kind) || reflect.TypeOf(data) == nil {
 		value[KEY_DATA] = data
 	} else {
-		//todo: handle pointers to values
-		switch reflect.Indirect(reflect.ValueOf(data)).Kind() {
-		case reflect.Struct:
-			value[KEY_OBJECT] = s.encodeObject(data)
-		case reflect.Array:
-			value[KEY_ARRAY] = s.encodeArray(data.([]interface{}))
-		case reflect.Slice:
-			value[KEY_ARRAY] = s.encodeArray(data.([]interface{}))
-		case reflect.Map:
-			value[KEY_ARRAY] = data
-		default:
-			value[KEY_DATA] = data
-		}
+		value[KEY_OBJECT] = s.encodeToStore(data)
 	}
 
 	value[KEY_STORE] = s.encoded
-	//spew.Dump("value: %+v", value)
 	encoded, err := json.Marshal(value)
 	if err != nil {
 		return "", err
@@ -67,46 +66,95 @@ func (s *Serializer) Encode(data interface{}) (string, error) {
 	return string(encoded), nil
 }
 
-func (s *Serializer) encodeArray(a []interface{}) []interface{} {
+func basicType(kind reflect.Kind) bool {
+	return kind == reflect.Bool ||
+		kind == reflect.Int ||
+		kind == reflect.Int8 ||
+		kind == reflect.Int16 ||
+		kind == reflect.Int32 ||
+		kind == reflect.Int64 ||
+		kind == reflect.Uint ||
+		kind == reflect.Uint8 ||
+		kind == reflect.Uint16 ||
+		kind == reflect.Uint32 ||
+		kind == reflect.Uint64 ||
+		kind == reflect.Uintptr ||
+		kind == reflect.Float32 ||
+		kind == reflect.Float64 ||
+		kind == reflect.String
+}
+
+func (s *Serializer) encodeToStore(object interface{}) string {
+	id := indexOf(s.decoded, object)
+	fmt.Println("id: ", id)
+	if id != -1 {
+		return storeID(id)
+	}
+	return s.storeAndEncode(object)
+}
+
+func (s *Serializer) storeAndEncode(object interface{}) string {
+	id := len(s.decoded)
+	s.decoded = insert(s.decoded, object, id)
+	s.encoded = insert(s.encoded, s.encodedObjectByType(object), id)
+	return storeID(id)
+}
+
+func (s *Serializer) encodedObjectByType(object interface{}) map[string]interface{} {
+	kind := reflect.Indirect(reflect.ValueOf(object)).Kind()
+	fmt.Println("kind: ", kind)
+	switch kind {
+	case reflect.Struct:
+		return s.encodeObject(object)
+	case reflect.Slice:
+		return s.encodeArray(object)
+		//case reflect.Array:
+		//case reflect.Map:
+	}
+
+	//todo??
+	return nil
+}
+
+func storeID(id int) string {
+	return ID_PREFIX + strconv.Itoa(id)
+}
+
+func validType(kind reflect.Kind) bool {
+	//todo: can we really not serialize complex?
+	return !(kind == reflect.Complex64 ||
+		kind == reflect.Complex128 ||
+		kind == reflect.Chan ||
+		kind == reflect.Func ||
+		kind == reflect.UnsafePointer)
+}
+
+func (s *Serializer) encodeArray(a interface{}) map[string]interface{} {
 
 	var array []interface{}
-	for _, v := range a {
-		vValue := reflect.Indirect(reflect.ValueOf(v))
-		switch vValue.Kind() {
-		case reflect.Struct:
-			array = append(array, s.encodeObject(v))
-		case reflect.Slice:
-			//todo: I hope this is ok
-			array = append(array, s.encodeArray(vValue.Interface().([]interface{})))
-		case reflect.Array:
-			//todo: I hope this is ok
-			array = append(array, s.encodeArray(v.([]interface{})))
+	fmt.Println("how many times does this print?")
+	for _, v := range a.([]interface{}) {
+		kind := reflect.Indirect(reflect.ValueOf(v)).Kind()
+		switch kind {
+		case reflect.Struct, reflect.Array, reflect.Slice, reflect.Map:
+			value := reflect.Indirect(reflect.ValueOf(v)).Interface() //removes pointer if there is one
+			fmt.Printf("))))))))))))))))) %+v", value)
+			array = append(array, s.encodeToStore(value))
 		default:
 			array = append(array, v)
 		}
 	}
-	return array
+
+	return map[string]interface{}{
+		KEY_ARRAY: array,
+	}
 }
 
-func (s *Serializer) encodeObject(o interface{}) string {
-
-	id := indexOf(o, s.decoded)
-
-	fmt.Println(id)
-	if id == -1 {
-		dataT := reflect.TypeOf(o)
-		id = len(s.decoded)
-
-		s.decoded = insert(s.decoded, o, id)
-		newEncoded := Object{
-			Name:       dataT.Name(),
-			Properties: s.encodeProperties(o),
-		}
-
-		s.encoded = insert(s.encoded, newEncoded, id)
+func (s *Serializer) encodeObject(object interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		KEY_OBJECT_NAME:       reflect.TypeOf(object).Name(),
+		KEY_OBJECT_PROPERTIES: s.encodeProperties(object),
 	}
-
-	return ID_PREFIX + strconv.Itoa(id)
 }
 
 func (s *Serializer) encodeProperties(o interface{}) map[string]interface{} {
@@ -118,9 +166,9 @@ func (s *Serializer) encodeProperties(o interface{}) map[string]interface{} {
 		//todo: handle the other cases
 		//fmt.Println("kind: ", reflect.Indirect(dataV.Field(i)).Kind())
 		switch reflect.Indirect(dataV.Field(i)).Kind() {
-		case reflect.Struct:
+		case reflect.Struct, reflect.Array, reflect.Slice, reflect.Map:
 			value := reflect.Indirect(dataV.Field(i)).Interface()
-			propMap[key] = s.encodeObject(value)
+			propMap[key] = s.encodeToStore(value)
 		default:
 			propMap[key] = dataV.Field(i).Interface()
 		}
@@ -128,7 +176,7 @@ func (s *Serializer) encodeProperties(o interface{}) map[string]interface{} {
 	return propMap
 }
 
-func indexOf(item interface{}, slice []interface{}) int {
+func indexOf(slice []interface{}, item interface{}) int {
 	for i, v := range slice {
 		if reflect.DeepEqual(v, item) {
 			return i
@@ -139,7 +187,6 @@ func indexOf(item interface{}, slice []interface{}) int {
 
 func (s *Serializer) Decode(data string, value interface{}) error {
 	////todo: handle race conditions
-	//
 	var v map[string]interface{}
 	err := json.Unmarshal([]byte(data), &v)
 
@@ -156,7 +203,7 @@ func (s *Serializer) Decode(data string, value interface{}) error {
 		if err != nil {
 			return err
 		}
-		s.decodeObject(idInt, s.encoded[idInt], value)
+		s.decodeStruct(idInt, s.encoded[idInt], value)
 		return nil
 	}
 
@@ -164,7 +211,8 @@ func (s *Serializer) Decode(data string, value interface{}) error {
 	return nil
 }
 
-func (s *Serializer) decodeObject(id int, encodedObject interface{}, decodeTo interface{}) {
+//todo: should I handle the case in which the KEY_OBJECT_PROPERTIES don't match the struct passed in? seems yes
+func (s *Serializer) decodeStruct(id int, encodedObject interface{}, decodeTo interface{}) {
 
 	fmt.Printf("id: %+v\n encodedObject: %+v\n decodeTo: %+v\n", id, encodedObject, decodeTo)
 	if len(s.decoded) > id {
@@ -176,23 +224,34 @@ func (s *Serializer) decodeObject(id int, encodedObject interface{}, decodeTo in
 	o := encodedObject.(map[string]interface{})
 	s.decoded = append(s.decoded, o)
 
-	dataV := reflect.ValueOf(decodeTo)
+	v := reflect.ValueOf(decodeTo)
 	for key, value := range o[KEY_OBJECT_PROPERTIES].(map[string]interface{}) {
 
-		fmt.Println("reflect.Indirect(reflect.Indirect(dataV).FieldByName(key)).Kind()", reflect.Indirect(reflect.Indirect(dataV).FieldByName(key)).Kind(), value)
-		if reflect.Indirect(reflect.Indirect(dataV).FieldByName(key)).Kind() == reflect.Invalid {
-			fmt.Println("my pointerzzzzzzz: ", dataV.Elem().FieldByName(key).Kind())
-		}
-		dataVField := reflect.Indirect(dataV.Elem().FieldByName(key))
-		switch dataVField.Kind() {
+		field := v.Elem().FieldByName(key)
+
+		field = indirect(field)
+
+		switch field.Kind() {
 		case reflect.Bool:
-			dataVField.SetBool(value.(bool))
+			field.SetBool(value.(bool))
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			dataVField.SetInt(int64(value.(float64)))
+			field.SetInt(int64(value.(float64)))
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			dataVField.SetUint(uint64(value.(float64)))
+			field.SetUint(uint64(value.(float64)))
 		case reflect.Float32, reflect.Float64:
-			dataVField.SetFloat(value.(float64))
+			field.SetFloat(value.(float64))
+		case reflect.String:
+			field.SetString(value.(string))
+			//todo:
+		//case reflect.Uintptr:
+		//case reflect.Array:
+		//case reflect.Chan:
+		//case reflect.Func:
+		//case reflect.Interface:
+		//case reflect.Map:
+		//case reflect.Slice:
+		case reflect.Struct:
+			field.Set(reflect.ValueOf(value))
 		//todo: this is not supported by json i guess?
 		//case reflect.Complex64, reflect.Complex128:
 		//	var c complex128
@@ -202,24 +261,36 @@ func (s *Serializer) decodeObject(id int, encodedObject interface{}, decodeTo in
 		//		//todo: panic?
 		//		panic(err)
 		//	}
-		//	dataVField.SetComplex(c)
-		case reflect.String:
-			dataVField.SetString(value.(string))
-			//todo:
-		//case reflect.Uintptr:
-		//case reflect.Array:
-		//case reflect.Chan:
-		//case reflect.Func:
-		//case reflect.Interface:
-		//case reflect.Map:
-		//case reflect.Ptr:
-		//case reflect.Slice:
-		case reflect.Struct:
-			dataVField.Set(reflect.ValueOf(value))
-			//case reflect.UnsafePointer:
-			//default:
+		//	fld.SetComplex(c)
+		//case reflect.UnsafePointer:
+		default:
+			panic(fmt.Sprintf("unknown kind: %s", field.Kind()))
 		}
 	}
+}
+
+func setPtr(field reflect.Value, value interface{}) {
+	switch field.Type().Elem().Kind() {
+	case reflect.Ptr:
+		//todo: recurse
+		spew.Dump("field.Type()", field.Type(), "field.Elem()", field.Elem())
+	case reflect.Bool:
+		v := value.(bool)
+		field.Set(reflect.ValueOf(&v))
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		v := int64(value.(float64))
+		field.Set(reflect.ValueOf(&v))
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		v := uint64(value.(float64))
+		field.Set(reflect.ValueOf(&v))
+	case reflect.Float32, reflect.Float64:
+		v := value.(float64)
+		field.Set(reflect.ValueOf(&v))
+	case reflect.String:
+		v := value.(string)
+		field.Set(reflect.ValueOf(&v))
+	}
+	//todo: other possible kinds
 }
 
 func insert(arr []interface{}, value interface{}, i int) []interface{} {
@@ -231,4 +302,35 @@ func insert(arr []interface{}, value interface{}, i int) []interface{} {
 	copy(newArr, arr)
 	newArr[i] = value
 	return newArr
+}
+
+func indirect(v reflect.Value) reflect.Value {
+	// If v is a named type and is addressable,
+	// start with its address, so that if the type has pointer methods,
+	// we find them.
+	if v.Kind() != reflect.Ptr && v.Type().Name() != "" && v.CanAddr() {
+		v = v.Addr()
+	}
+	for {
+		// Load value from interface, but only if the result will be
+		// usefully addressable.
+		if v.Kind() == reflect.Interface && !v.IsNil() {
+			e := v.Elem()
+			if e.Kind() == reflect.Ptr && !e.IsNil() {
+				v = e
+				continue
+			}
+		}
+
+		if v.Kind() != reflect.Ptr {
+			break
+		}
+
+		if v.IsNil() {
+			v.Set(reflect.New(v.Type().Elem()))
+		}
+
+		v = v.Elem()
+	}
+	return v
 }
