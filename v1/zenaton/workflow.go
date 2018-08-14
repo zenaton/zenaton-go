@@ -1,6 +1,9 @@
 package zenaton
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
 //todo: must call NewWorkflow to create this so that we can do validation. I'm not sure how to do that given that we must export fields for the worker library
 type Workflow struct {
@@ -10,8 +13,7 @@ type Workflow struct {
 	// must be Exported for worker library
 	OnEvent func(string, interface{}) // todo: have reflect checks on this input type and the data type on Send()
 	//todo: in Client.js it says that ID could either be a function or a field
-	//todo: do we need this to be a function? because it's kinda funny looking that way
-	id        func() string
+	id        interface{}
 	canonical string
 	//todo: what to do with these?
 	OnStart               func(*Task)
@@ -22,9 +24,8 @@ type Workflow struct {
 }
 
 type WorkflowParams struct {
-	Data interface{} //required
-	//todo: get the name from the function name like in cadence?
-	Name       string //required
+	Data       interface{} //required
+	Name       string      //required
 	HandleFunc interface{}
 	//todo: these should take the data object
 	OnEvent   func(name string, data interface{})
@@ -32,7 +33,8 @@ type WorkflowParams struct {
 	OnSuccess func(*Task, interface{})
 	OnFailure func(*Task, error)
 	OnTimeout func(*Task)
-	ID        func() string
+	// ID recieves the data object and should return a string
+	ID interface{}
 }
 
 func NewWorkflow(params WorkflowParams) *Workflow {
@@ -68,28 +70,91 @@ func validateWorkflowParams(params WorkflowParams) error {
 		panic("must set a HandleFunc for the workflow")
 	}
 
-	t := reflect.TypeOf(params.HandleFunc)
-	if t.Kind() != reflect.Func {
-		panic("handler argument to NewWorkflow must be a function. instead it is of kind: " + t.Kind().String())
-	}
-	if t.NumIn() > 1 {
-		panic("must take a maximum of 1 argument which will receive the data object associated with the workflow: " + t.Kind().String())
-	}
-
-	// if Data is defined, the type of Data must be the same as the type of the reciever for HandleFunc
-	if params.Data != nil {
-
-		t := reflect.TypeOf(params.HandleFunc)
-		if t.NumIn() != 1 {
-			panic("if you specify a data field for a workflow, your handler function must have a receiver to accept that data" + t.Kind().String())
-		}
-		if t.In(0) != reflect.TypeOf(params.Data) {
-			panic("type of data must be the same as the parameter type of the handler function. Handler function type: " +
-				t.String() + " Data type: " + reflect.TypeOf(params.Data).String())
-		}
+	validateHandlerFunc(params.HandleFunc, params.Data)
+	if params.ID != nil {
+		validateIDFunc(params.ID, params.Data)
 	}
 
 	return nil
+}
+
+// todo: put this somewhere else, as it's used by both workflow and task
+func validateHandlerFunc(fn interface{}, data interface{}) {
+	fnName := "HandlerFunc"
+	fnType := reflect.TypeOf(fn)
+	// check that the HandleFunc is in fact a function
+	if fnType.Kind() != reflect.Func {
+		panic(fmt.Sprintf("%s must be a function, not a : %s", fnName, fnType.Kind().String()))
+	}
+	// check that the number inputs to the HandleFunc is not greater than 1
+	if fnType.NumIn() > 1 {
+		panic(fmt.Sprintf("%s must take a maximum of 1 argument", fnName))
+	}
+
+	// check that the number of outputs is either 0, 1 or 2 (for either (result, error), or just error, or no return)
+	if fnType.NumOut() > 2 {
+		panic(fmt.Sprintf("%s must return (result, error) or just error, but found %d return values", fnName, fnType.NumOut()))
+	}
+
+	// check that the return type is valid (channels, functions, and unsafe pointers cannot be serialized)
+	if fnType.NumOut() > 1 && !isValidResultType(fnType.Out(0)) {
+		panic(fmt.Sprintf("%s's first return value cannot be a channel, function, or unsafe pointer; found: %v", fnName, fnType.Out(0).Kind()))
+	}
+
+	// check that the last return value is an error
+	if fnType.NumOut() > 0 && !isError(fnType.Out(fnType.NumOut()-1)) {
+		panic(fmt.Sprintf("expected second return value of %s to return error but found %v", fnName, fnType.Out(fnType.NumOut()-1).Kind()))
+	}
+
+	// if Data is defined, the type of Data must be the same as the type of the receiver for HandleFunc
+	if data != nil {
+		if fnType.NumIn() != 1 {
+			panic("if you specify a data field for a task, your function must have a receiver to accept that data")
+		}
+		if fnType.In(0) != reflect.TypeOf(data) {
+			panic(fmt.Sprint("type of data must be the same as the parameter type of the function. ", fnName, "parameter type: ", fnType.String(), " Data type: ", reflect.TypeOf(data).String()))
+		}
+	}
+}
+
+func validateIDFunc(fn interface{}, data interface{}) {
+	fnName := "ID function"
+	fnType := reflect.TypeOf(fn)
+	// check that the HandleFunc is in fact a function
+	if fnType.Kind() != reflect.Func {
+		panic(fmt.Sprintf("%s must be a function, not a : %s", fnName, fnType.Kind().String()))
+	}
+	// check that the number inputs to the HandleFunc is not greater than 1
+	if fnType.NumIn() > 1 {
+		panic(fmt.Sprintf("%s must take a maximum of 1 argument", fnName))
+	}
+
+	validateData(fn, data)
+
+	//todo: this is ugly, make it better (at least use a constant)
+	//todo: test this
+	// check that the ID function returns a string
+	if fnType.Out(0).String() != "string" {
+		panic(fmt.Sprint(fnName, " should return a string. instead it returns a: ", reflect.TypeOf(fnType.Out(0)).String()))
+	}
+	if fnType.NumOut() != 1 {
+		panic(fmt.Sprint(fnName, " should return a string"))
+	}
+}
+
+//todo: refactor validation, it's a bit ugly
+func validateData(fn interface{}, data interface{}) {
+	fnType := reflect.TypeOf(fn)
+	// if Data is defined, the type of Data must be the same as the type of the receiver for HandleFunc
+	if data != nil {
+		if fnType.NumIn() != 1 {
+			panic("if you specify a data field for a task, your function must have a receiver to accept that data")
+		}
+		if fnType.In(0) != reflect.TypeOf(data) {
+			fmt.Println("problematic data: ", data)
+			panic(fmt.Sprint("type of data must be the same as the parameter type of the function. Function parameter type: ", fnType.In(0).String(), ". Data type: ", reflect.TypeOf(data).String()))
+		}
+	}
 }
 
 func (wf *Workflow) Handle() (interface{}, error) {
@@ -102,23 +167,19 @@ func (wf *Workflow) Handle() (interface{}, error) {
 		in = []reflect.Value{reflect.ValueOf(wf.data)}
 	}
 
+	//todo: test the error case here
 	values := handlFuncValue.Call(in)
-
-	var err error
 
 	if len(values) == 0 {
 		return nil, nil
 	}
 
 	if !values[len(values)-1].IsNil() {
-		err = values[len(values)-1].Interface().(error)
-	}
-
-	if len(values) == 1 {
+		err := values[len(values)-1].Interface().(error)
 		return nil, err
 	}
 
-	return values[0].Interface(), err
+	return values[0].Interface(), nil
 }
 
 //func (wf *Workflow) AsyncHandle(channel chan interface{}) {
@@ -155,14 +216,47 @@ func (wf *Workflow) GetData() interface{} {
 	return wf.data
 }
 
-func (wf *Workflow) SetData(data interface{}) {
+func (wf *Workflow) SetData(data interface{}) *Workflow {
+	validateData(wf.handleFunc, data)
+	if wf.id != nil {
+		validateData(wf.id, data)
+	}
 	wf.data = data
+	return wf
+}
+
+func (wf *Workflow) SetDataByEncodedString(encodedData string) error {
+	serializer := &Serializer{}
+	typeHandlerFunc := reflect.TypeOf(wf.handleFunc)
+	if typeHandlerFunc.NumIn() > 0 {
+		data := reflect.New(typeHandlerFunc.In(0)).Interface()
+		err := serializer.Decode(encodedData, data)
+		if err != nil {
+			return err
+		}
+
+		wf.data = reflect.ValueOf(data).Elem().Interface()
+	} else {
+		wf.data = nil
+	}
+	return nil
 }
 
 func (wf *Workflow) GetCustomID() string {
 	var id string
 	if wf.id != nil {
-		id = wf.id()
+		idType := reflect.TypeOf(wf.id)
+		idValue := reflect.ValueOf(wf.id)
+		var in []reflect.Value
+		if idType.NumIn() > 0 {
+			in = []reflect.Value{reflect.ValueOf(wf.data)}
+		}
+
+		fmt.Println("reflect.ValueOf(wf.data): ", reflect.ValueOf(wf.data))
+		values := idValue.Call(in)
+
+		//todo: is it possible that this would be an index out of bounds?
+		id = values[0].String()
 	}
 	return id
 }
@@ -181,4 +275,8 @@ func (wf *Workflow) Pause() *Builder {
 
 func (wf *Workflow) Resume() *Builder {
 	return NewBuilder(wf).Resume()
+}
+
+func (wf *Workflow) GetHandleFunc() interface{} {
+	return wf.handleFunc
 }

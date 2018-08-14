@@ -18,20 +18,16 @@ func NewWorkflowManager() *WorkflowManager {
 
 //todo: what's the difference between these two
 func (wfm *WorkflowManager) GetWorkflow(name, encodedData string) *Workflow {
+
 	// get workflow class
 	workflow := wfm.GetClass(name)
-	// unserialize string data and update the workflow data field
 
-	if encodedData == "" {
+	if encodedData == `""` {
 		encodedData = "{}"
 	}
 
-	serializer := &Serializer{}
-	err := serializer.Decode(encodedData, &workflow.data)
+	workflow.SetDataByEncodedString(encodedData)
 
-	if err != nil {
-		panic(err)
-	}
 	//todo: figure out this version stuff
 	//// if Version => the workflow was versioned meanwhile => get the initial class
 	//if "VersionClass" == workflow.name {

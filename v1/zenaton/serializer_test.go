@@ -7,6 +7,8 @@ import (
 
 	"fmt"
 
+	"reflect"
+
 	. "github.com/onsi/gomega"
 	"github.com/zenaton/zenaton-go/v1/zenaton"
 )
@@ -91,40 +93,103 @@ var _ = Describe("Encode", func() {
 		})
 	})
 
-	//context 'with recursive arrays' do
-	//  let(:array1) { [1, 2, 3] }
-	//  let(:array2) { [4, 5, 6] }
-	//  let(:data) { array1 }
-	//  let(:expected_representation) do
-	//    {
-	//      'o' => '@zenaton#0',
-	//      's' => [{
-	//        'a' => [1, 2, 3, '@zenaton#1']
-	//      }, {
-	//        'a' => [4, 5, 6, '@zenaton#0']
-	//      }]
-	//    }
-	//  end
-	//
-	//  before do
-	//    array1 << array2
-	//    array2 << array1
-	//  end
-	//
-	//  it 'represents the array as an object' do
-	//    expect(parsed_json).to eq(expected_representation)
-	//  end
-	//
+	Context("with recursive arrays", func() {
+		FIt("represents the array as an array", func() {
 
-	FContext("with recursive arrays", func() {
-		It("represents the array as an array", func() {
+			//
+			//type MyInt int
+			//
+			//var i = 1
+			//
+			//encodedInt, err := s.Encode(i)
+			//Expect(err).ToNot(HaveOccurred())
+			//fmt.Println(encodedInt)
+			//
+			//fmt.Println(reflect.TypeOf(i))
+			//var bob MyInt
+			//interfaceInt := intrfc(&bob)
+			//err = s.Decode(encodedInt, interfaceInt)
+			//Expect(err).ToNot(HaveOccurred())
+			//Expect(*interfaceInt.(*MyInt)).To(Equal(MyInt(1)))
+			//
+			//var bob2 MyInt
+			//interfaceInt = intrfc(bob2)
+			//interfaceInt = reflect.New(reflect.TypeOf(interfaceInt)).Interface()
+			//err = s.Decode(encodedInt, interfaceInt)
+			//Expect(err).ToNot(HaveOccurred())
+			//Expect(*interfaceInt.(*MyInt)).To(Equal(MyInt(1)))
+			//
+			//type ID struct {
+			//	ID int
+			//}
+			//
+			//var id = ID{1}
+			//
+			//encodedInt, err = s.Encode(id)
+			//Expect(err).ToNot(HaveOccurred())
+			//fmt.Println(encodedInt)
+			//
+			//fmt.Println(reflect.TypeOf(i))
+			//var bobID ID
+			//interfaceInt = intrfc(&bobID)
+			//err = s.Decode(encodedInt, interfaceInt)
+			//Expect(err).ToNot(HaveOccurred())
+			//Expect(*interfaceInt.(*ID)).To(Equal(ID{1}))
+			//
+			//var bobID2 ID
+			//interfaceInt = intrfc(bobID2)
+			//interfaceInt2 := reflect.New(reflect.TypeOf(interfaceInt)).Interface()
+			//err = s.Decode(encodedInt, interfaceInt2)
+			//Expect(err).ToNot(HaveOccurred())
+			//fmt.Println("interfaceInt2: ", interfaceInt2)
+			//Expect(*interfaceInt2.(*ID)).To(Equal(ID{1}))
+			//
+			//type IDmax struct {
+			//	ID  int
+			//	Max int
+			//}
+			//
+			//idmax := intrfc(IDmax{1, 2})
+			//
+			//encodedIDmax, err := s.Encode(idmax)
+			//Expect(err).ToNot(HaveOccurred())
+			//fmt.Println(encodedIDmax)
+			//
+			//fmt.Println(reflect.TypeOf(idmax))
+			//bobmax := IDmax{}
+			//newIdmax := intrfc(&bobmax)
+			//err = s.Decode(encodedIDmax, newIdmax)
+			//Expect(err).ToNot(HaveOccurred())
+			//fmt.Printf("newIdmax: %+v\n", newIdmax)
+			//
+			//bobmax = IDmax{}
+			//newIdmax = intrfc(bobmax)
+			//newIdmax = reflect.New(reflect.TypeOf(newIdmax)).Interface()
+			//err = s.Decode(encodedIDmax, newIdmax)
+			//Expect(err).ToNot(HaveOccurred())
+			//fmt.Printf("newIdmax: %+v\n", newIdmax)
+
 			expectedOutput := `{"o":"@zenaton#0","s":[{"a":["@zenaton#1"]},{"a":["@zenaton#0"]}]}`
-			var arr1 []interface{}
-			var arr2 []interface{}
-			arr1 = append(arr1, &arr2)
-			arr2 = append(arr2, &arr1)
+			var arr1 [1]interface{}
+			var arr2 [1]interface{}
 
-			encoded, err := s.Encode(arr1)
+			arr1 = [1]interface{}{&arr2}
+			arr2 = [1]interface{}{&arr1}
+
+			//arr3 := []interface{}{&arr2}
+			//
+			//spew.Dump(arr1)
+			//spew.Dump(arr3)
+
+			intrfcArr1 := intrfc(&arr1)
+			//intrfcArr2 := intrfc(arr2)
+
+			fmt.Println("arr1: ", reflect.ValueOf(&arr1).Pointer())
+			fmt.Println("arr1: ", reflect.ValueOf(intrfcArr1).Pointer())
+			fmt.Println("arr1 in arr2: ", reflect.ValueOf(arr2[0]).Pointer())
+
+			fmt.Println("test arr1: ", reflect.ValueOf(&arr1).Pointer(), "test arr2: ", reflect.ValueOf(&arr2).Pointer())
+			encoded, err := s.Encode(&arr1)
 			Expect(err).ToNot(HaveOccurred())
 			fmt.Println(encoded)
 			Expect(encoded).To(Equal(expectedOutput))
@@ -165,17 +230,34 @@ var _ = Describe("Encode", func() {
 	Context("with a struct with circular dependencies", func() {
 		It("represents the struct as an object", func() {
 
-			expectedSerialized := `{"o":"@zenaton#0","s":[{"n":"Person","p":{"Child":"@zenaton#1","Parent":null}},{"n":"Person","p":{"Child":null,"Parent":"@zenaton#0"}}]}`
+			var indexOf = func(slice []interface{}, item interface{}) int {
+				for i := range slice {
+					fmt.Println(slice[i] == item)
+				}
+				return -1
+			}
+
 			parent := Person{}
 			child := Person{
 				Parent: &parent,
 			}
 			parent.Child = &child
 
-			encoded, err := s.Encode(parent)
-			Expect(err).ToNot(HaveOccurred())
-			fmt.Println("encoded: ", encoded)
-			Expect(encoded).To(Equal(expectedSerialized))
+			parent2 := Person{}
+			child2 := Person{
+				Parent: &parent2,
+			}
+			parent.Child = &child2
+
+			parents := []interface{}{&parent, &parent2}
+
+			fmt.Println(indexOf(parents, &parent))
+
+			//expectedSerialized := `{"o":"@zenaton#0","s":[{"n":"Person","p":{"Child":"@zenaton#1","Parent":null}},{"n":"Person","p":{"Child":null,"Parent":"@zenaton#0"}}]}`
+			//encoded, err := s.Encode(parent)
+			//Expect(err).ToNot(HaveOccurred())
+			//fmt.Println("encoded: ", encoded)
+			//Expect(encoded).To(Equal(expectedSerialized))
 		})
 	})
 
@@ -265,3 +347,7 @@ var _ = Describe("Encode", func() {
 		})
 	})
 })
+
+func intrfc(i interface{}) interface{} {
+	return i
+}

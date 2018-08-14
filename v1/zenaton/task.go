@@ -1,23 +1,20 @@
 package zenaton
 
-import (
-	"fmt"
-	"reflect"
-)
+import "reflect"
 
 type Task struct {
 	name string
 	//todo: would be nice if the handle func could take many arguments, instead of just one. would have to think how that would be done (maybe pass in argments into execute?)
 	handleFunc interface{}
 	data       interface{}
-	id         func() string
+	id         interface{}
 }
 
 type TaskParams struct {
 	Name       string
 	HandleFunc interface{}
 	Data       interface{}
-	ID         func() string
+	ID         interface{}
 }
 
 func NewTask(params TaskParams) *Task {
@@ -44,43 +41,10 @@ func validateTaskParams(params TaskParams) {
 		panic("must set a HandleFunc for the task")
 	}
 
-	fnType := reflect.TypeOf(params.HandleFunc)
-	// check that the HandleFunc is in fact a function
-	if fnType.Kind() != reflect.Func {
-		panic(fmt.Sprintf("HandlerFunc must be a function, not a : %s", fnType.Kind().String()))
+	validateHandlerFunc(params.HandleFunc, params.Data)
+	if params.ID != nil {
+		validateIDFunc(params.ID, params.Data)
 	}
-	// check that the number inputs to the HandleFunc is not greater than 1
-	if fnType.NumIn() > 1 {
-		panic("HandlerFunc must take a maximum of 1 argument")
-	}
-
-	// check that the number of outputs is either 0, 1 or 2 (for either (result, error), or just error, or no return)
-	if fnType.NumOut() > 2 {
-		panic(fmt.Sprintf("HandlerFunc must return (result, error) or just error, but found %d return values", fnType.NumOut()))
-	}
-
-	// check that the return type is valid (channels, functions, and unsafe pointers cannot be serialized)
-	if fnType.NumOut() > 1 && !isValidResultType(fnType.Out(0)) {
-		panic(fmt.Sprintf("HandlerFunc's first return value cannot be a channel, function, or unsafe pointer; found: %v", fnType.Out(0).Kind()))
-	}
-
-	// check that the last return value is an error
-	if fnType.NumOut() > 0 && !isError(fnType.Out(fnType.NumOut()-1)) {
-		panic(fmt.Sprintf("expected function second return value to return error but found %v", fnType.Out(fnType.NumOut()-1).Kind()))
-	}
-
-	// if Data is defined, the type of Data must be the same as the type of the receiver for HandleFunc
-	if params.Data != nil {
-		t := reflect.TypeOf(params.HandleFunc)
-		if t.NumIn() != 1 {
-			panic("if you specify a data field for a task, your handler function must have a receiver to accept that data" + t.Kind().String())
-		}
-		if t.In(0) != reflect.TypeOf(params.Data) {
-			panic("type of data must be the same as the parameter type of the HandlerFunc. handlerFunction type: " +
-				t.String() + " Data type: " + reflect.TypeOf(params.Data).String())
-		}
-	}
-
 }
 
 func isError(inType reflect.Type) bool {
@@ -170,4 +134,9 @@ func (t *Task) GetName() string {
 
 func (t *Task) GetData() interface{} {
 	return t.data
+}
+
+func (t *Task) SetData(data interface{}) *Task {
+	t.data = data
+	return t
 }

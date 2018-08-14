@@ -1,5 +1,7 @@
 package zenaton
 
+import "github.com/zenaton/examples-go/idmax"
+
 var taskManagerInstance *TaskManager
 
 type TaskManager struct {
@@ -34,11 +36,14 @@ func (tm *TaskManager) GetTask(name, encodedData string) *Task {
 	task := tm.GetClass(name)
 	// unserialize data
 	serializer := &Serializer{}
-	err := serializer.Decode(encodedData, &task.data)
+
+	var data idmax.IDmax
+	err := serializer.Decode(encodedData, &data)
 	if err != nil {
 		panic(err)
 	}
 
+	task.data = data
 	//todo: what is this:?
 	//// do not use construct function to set data
 	//taskClass._useInit = false
