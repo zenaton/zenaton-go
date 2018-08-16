@@ -7,8 +7,6 @@ import (
 
 	"fmt"
 
-	"reflect"
-
 	. "github.com/onsi/gomega"
 	"github.com/zenaton/zenaton-go/v1/zenaton"
 )
@@ -22,246 +20,224 @@ type SerializeMe struct {
 	Initialized bool
 }
 
-var _ = Describe("Encode", func() {
-	s := zenaton.Serializer{}
-	Context("with a string", func() {
-		It("represents the string as a data", func() {
-			encoded, err := s.Encode("e")
-			Expect(err).ToNot(HaveOccurred())
-			var value map[string]interface{}
-			json.Unmarshal([]byte(encoded), &value)
-			Expect(value["d"]).To(Equal("e"))
-			Expect(value["s"]).To(Equal([]interface{}{}))
+var _ = Describe("Serializer", func() {
+	Describe("Encode", func() {
+		s := zenaton.Serializer{}
+		Context("with a string", func() {
+			It("represents the string as a data", func() {
+				encoded, err := s.Encode("e")
+				Expect(err).ToNot(HaveOccurred())
+				var value map[string]interface{}
+				json.Unmarshal([]byte(encoded), &value)
+				Expect(value["d"]).To(Equal("e"))
+				Expect(value["s"]).To(Equal([]interface{}{}))
+			})
 		})
-	})
 
-	Context("with a string", func() {
-		It("represents the integer as a data", func() {
-			encoded, err := s.Encode(1)
-			Expect(err).ToNot(HaveOccurred())
+		Context("with a string", func() {
+			It("represents the integer as a data", func() {
+				encoded, err := s.Encode(1)
+				Expect(err).ToNot(HaveOccurred())
 
-			fmt.Println("encoded: ", encoded)
-			Expect(encoded).To(Equal(encoded))
-			//Expect(value["s"]).To(Equal([]interface{}{}))
+				fmt.Println("encoded: ", encoded)
+				Expect(encoded).To(Equal(encoded))
+				//Expect(value["s"]).To(Equal([]interface{}{}))
+			})
 		})
-	})
 
-	Context("with a float", func() {
-		It("represents the integer as a data", func() {
-			encoded, err := s.Encode(1.8)
-			Expect(err).ToNot(HaveOccurred())
-			fmt.Println(encoded)
-			Expect(encoded).To(Equal(`{"d":1.8,"s":[]}`))
+		Context("with a float", func() {
+			It("represents the integer as a data", func() {
+				encoded, err := s.Encode(1.8)
+				Expect(err).ToNot(HaveOccurred())
+				fmt.Println(encoded)
+				Expect(encoded).To(Equal(`{"d":1.8,"s":[]}`))
+			})
 		})
-	})
 
-	Context("with true", func() {
-		It("represents the boolean as a data", func() {
-			encoded, err := s.Encode(true)
-			Expect(err).ToNot(HaveOccurred())
-			fmt.Println(encoded)
-			Expect(encoded).To(Equal(`{"d":true,"s":[]}`))
+		Context("with true", func() {
+			It("represents the boolean as a data", func() {
+				encoded, err := s.Encode(true)
+				Expect(err).ToNot(HaveOccurred())
+				fmt.Println(encoded)
+				Expect(encoded).To(Equal(`{"d":true,"s":[]}`))
+			})
 		})
-	})
 
-	Context("with false", func() {
-		It("represents the boolean as a data", func() {
-			encoded, err := s.Encode(false)
-			Expect(err).ToNot(HaveOccurred())
-			fmt.Println(encoded)
-			Expect(encoded).To(Equal(`{"d":false,"s":[]}`))
+		Context("with false", func() {
+			It("represents the boolean as a data", func() {
+				encoded, err := s.Encode(false)
+				Expect(err).ToNot(HaveOccurred())
+				fmt.Println(encoded)
+				Expect(encoded).To(Equal(`{"d":false,"s":[]}`))
+			})
 		})
-	})
 
-	Context("with nil", func() {
-		It("represents the nil as a data", func() {
-			var nilInterface interface{}
-			encoded, err := s.Encode(nilInterface)
-			Expect(err).ToNot(HaveOccurred())
-			fmt.Println(encoded)
-			Expect(encoded).To(Equal(`{"d":null,"s":[]}`))
+		Context("with nil", func() {
+			It("represents the nil as a data", func() {
+				var nilInterface interface{}
+				encoded, err := s.Encode(nilInterface)
+				Expect(err).ToNot(HaveOccurred())
+				fmt.Println(encoded)
+				Expect(encoded).To(Equal(`{"d":null,"s":[]}`))
+			})
 		})
-	})
 
-	Context("with a simple array", func() {
-		It("represents the array as an array", func() {
-			arr := []interface{}{1, "e"}
-			encoded, err := s.Encode(arr)
-			Expect(err).ToNot(HaveOccurred())
-			fmt.Println(encoded)
-			Expect(encoded).To(Equal(`{"o":"@zenaton#0","s":[{"a":[1,"e"]}]}`))
+		Context("with a simple array", func() {
+			It("represents the array as an array", func() {
+				arr := []interface{}{1, "e"}
+				encoded, err := s.Encode(arr)
+				Expect(err).ToNot(HaveOccurred())
+				fmt.Println(encoded)
+				Expect(encoded).To(Equal(`{"o":"@zenaton#0","s":[{"v":[1,"e"]}]}`))
+			})
 		})
-	})
 
-	Context("with recursive arrays", func() {
-		FIt("represents the array as an array", func() {
+		Context("with circular arrays that only contain each other", func() {
+			It("represents the array as an array", func() {
 
-			//
-			//type MyInt int
-			//
-			//var i = 1
-			//
-			//encodedInt, err := s.Encode(i)
-			//Expect(err).ToNot(HaveOccurred())
-			//fmt.Println(encodedInt)
-			//
-			//fmt.Println(reflect.TypeOf(i))
-			//var bob MyInt
-			//interfaceInt := intrfc(&bob)
-			//err = s.Decode(encodedInt, interfaceInt)
-			//Expect(err).ToNot(HaveOccurred())
-			//Expect(*interfaceInt.(*MyInt)).To(Equal(MyInt(1)))
-			//
-			//var bob2 MyInt
-			//interfaceInt = intrfc(bob2)
-			//interfaceInt = reflect.New(reflect.TypeOf(interfaceInt)).Interface()
-			//err = s.Decode(encodedInt, interfaceInt)
-			//Expect(err).ToNot(HaveOccurred())
-			//Expect(*interfaceInt.(*MyInt)).To(Equal(MyInt(1)))
-			//
-			//type ID struct {
-			//	ID int
-			//}
-			//
-			//var id = ID{1}
-			//
-			//encodedInt, err = s.Encode(id)
-			//Expect(err).ToNot(HaveOccurred())
-			//fmt.Println(encodedInt)
-			//
-			//fmt.Println(reflect.TypeOf(i))
-			//var bobID ID
-			//interfaceInt = intrfc(&bobID)
-			//err = s.Decode(encodedInt, interfaceInt)
-			//Expect(err).ToNot(HaveOccurred())
-			//Expect(*interfaceInt.(*ID)).To(Equal(ID{1}))
-			//
-			//var bobID2 ID
-			//interfaceInt = intrfc(bobID2)
-			//interfaceInt2 := reflect.New(reflect.TypeOf(interfaceInt)).Interface()
-			//err = s.Decode(encodedInt, interfaceInt2)
-			//Expect(err).ToNot(HaveOccurred())
-			//fmt.Println("interfaceInt2: ", interfaceInt2)
-			//Expect(*interfaceInt2.(*ID)).To(Equal(ID{1}))
-			//
-			//type IDmax struct {
-			//	ID  int
-			//	Max int
-			//}
-			//
-			//idmax := intrfc(IDmax{1, 2})
-			//
-			//encodedIDmax, err := s.Encode(idmax)
-			//Expect(err).ToNot(HaveOccurred())
-			//fmt.Println(encodedIDmax)
-			//
-			//fmt.Println(reflect.TypeOf(idmax))
-			//bobmax := IDmax{}
-			//newIdmax := intrfc(&bobmax)
-			//err = s.Decode(encodedIDmax, newIdmax)
-			//Expect(err).ToNot(HaveOccurred())
-			//fmt.Printf("newIdmax: %+v\n", newIdmax)
-			//
-			//bobmax = IDmax{}
-			//newIdmax = intrfc(bobmax)
-			//newIdmax = reflect.New(reflect.TypeOf(newIdmax)).Interface()
-			//err = s.Decode(encodedIDmax, newIdmax)
-			//Expect(err).ToNot(HaveOccurred())
-			//fmt.Printf("newIdmax: %+v\n", newIdmax)
+				var arr1 [1]interface{}
+				var arr2 [1]interface{}
 
-			expectedOutput := `{"o":"@zenaton#0","s":[{"a":["@zenaton#1"]},{"a":["@zenaton#0"]}]}`
-			var arr1 [1]interface{}
-			var arr2 [1]interface{}
+				arr1 = [1]interface{}{&arr2}
+				arr2 = [1]interface{}{&arr1}
 
-			arr1 = [1]interface{}{&arr2}
-			arr2 = [1]interface{}{&arr1}
-
-			//arr3 := []interface{}{&arr2}
-			//
-			//spew.Dump(arr1)
-			//spew.Dump(arr3)
-
-			intrfcArr1 := intrfc(&arr1)
-			//intrfcArr2 := intrfc(arr2)
-
-			fmt.Println("arr1: ", reflect.ValueOf(&arr1).Pointer())
-			fmt.Println("arr1: ", reflect.ValueOf(intrfcArr1).Pointer())
-			fmt.Println("arr1 in arr2: ", reflect.ValueOf(arr2[0]).Pointer())
-
-			fmt.Println("test arr1: ", reflect.ValueOf(&arr1).Pointer(), "test arr2: ", reflect.ValueOf(&arr2).Pointer())
-			encoded, err := s.Encode(&arr1)
-			Expect(err).ToNot(HaveOccurred())
-			fmt.Println(encoded)
-			Expect(encoded).To(Equal(expectedOutput))
+				encoded, err := s.Encode(&arr1)
+				Expect(err).ToNot(HaveOccurred())
+				fmt.Println(encoded)
+				Expect(encoded).To(Equal(`{"o":"@zenaton#0","s":[{"v":["@zenaton#1"]},{"v":["@zenaton#0"]}]}`))
+			})
 		})
-	})
 
-	//todo: this needs to be different, as maps can have pointer keys and values
-	XContext("with an map", func() {
-		It("represents the map as an map", func() {
-			m := map[string]string{
-				"key": "value",
-			}
-			encoded, err := s.Encode(m)
-			Expect(err).ToNot(HaveOccurred())
-			fmt.Println(encoded)
-			Expect(encoded).To(Equal(`{"a":{"key":"value"},"s":[]}`))
+		Context("with circular arrays that only contain each other", func() {
+			Context("without receiving a pointer to the array", func() {
+				It("represents the array as an array", func() {
+
+					var arr1 [1]interface{}
+					var arr2 [1]interface{}
+
+					arr1 = [1]interface{}{&arr2}
+					arr2 = [1]interface{}{&arr1}
+
+					encoded, err := s.Encode(arr1)
+					Expect(err).ToNot(HaveOccurred())
+					fmt.Println(encoded)
+					Expect(encoded).To(Equal(`{"o":"@zenaton#0","s":[{"v":["@zenaton#1"]},{"v":["@zenaton#2"]},{"v":["@zenaton#1"]}]}`))
+				})
+			})
 		})
-	})
 
-	Context("with a simple struct", func() {
-		It("represents the struct as an object", func() {
-			sm := SerializeMe{
-				Initialized: true,
-			}
+		Context("with an array inside an array", func() {
+			It("represents the array as an array", func() {
 
-			encoded, err := s.Encode(sm)
-			Expect(err).ToNot(HaveOccurred())
-			fmt.Println(encoded)
-			Expect(encoded).To(Equal(`{"o":"@zenaton#0","s":[{"n":"SerializeMe","p":{"Initialized":true}}]}`))
+				var arr1 [1]interface{}
+				arr2 := [1]interface{}{1}
+
+				arr1 = [1]interface{}{arr2}
+
+				encoded, err := s.Encode(arr1)
+				Expect(err).ToNot(HaveOccurred())
+				fmt.Println(encoded)
+				Expect(encoded).To(Equal(`{"o":"@zenaton#0","s":[{"v":["@zenaton#1"]},{"v":[1]}]}`))
+			})
 		})
-	})
 
-	type Person struct {
-		Parent *Person
-		Child  *Person
-	}
+		Context("with circular slices", func() {
+			It("represents the slice as an array", func() {
 
-	Context("with a struct with circular dependencies", func() {
-		It("represents the struct as an object", func() {
+				var arr1 []interface{}
+				var arr2 []interface{}
 
-			var indexOf = func(slice []interface{}, item interface{}) int {
-				for i := range slice {
-					fmt.Println(slice[i] == item)
+				arr1 = []interface{}{&arr2}
+				arr2 = []interface{}{&arr1}
+
+				encoded, err := s.Encode(&arr1)
+				Expect(err).ToNot(HaveOccurred())
+				fmt.Println(encoded)
+				Expect(encoded).To(Equal(`{"o":"@zenaton#0","s":[{"v":["@zenaton#1"]},{"v":["@zenaton#0"]}]}`))
+			})
+		})
+		Context("with circular arrays that contain each other and other elements", func() {
+			It("represents the array as an array", func() {
+
+				var arr1 [3]interface{}
+				var arr2 [3]interface{}
+
+				arr1 = [3]interface{}{&arr2, 1, 2}
+				arr2 = [3]interface{}{&arr1, 3, 4}
+
+				encoded, err := s.Encode(&arr1)
+				Expect(err).ToNot(HaveOccurred())
+				fmt.Println(encoded)
+				Expect(encoded).To(Equal(`{"o":"@zenaton#0","s":[{"v":["@zenaton#1",1,2]},{"v":["@zenaton#0",3,4]}]}`))
+			})
+		})
+
+		//todo: this needs to be different, as maps can have pointer keys and values
+		Context("with a simple map", func() {
+			It("represents the map as an map", func() {
+				m := map[string]string{
+					"k1": "v1",
+					"k2": "v2",
 				}
-				return -1
-			}
+				encoded, err := s.Encode(m)
+				Expect(err).ToNot(HaveOccurred())
+				fmt.Println(encoded)
+				Expect(encoded).To(Equal(`{"o":"@zenaton#0","s":[{"k":["k1","k2"],"v":["v1","v2"]}]}`))
+			})
+		})
 
-			parent := Person{}
-			child := Person{
-				Parent: &parent,
-			}
-			parent.Child = &child
+		Context("with a circular map", func() {
+			It("represents the map as an map", func() {
 
-			parent2 := Person{}
-			child2 := Person{
-				Parent: &parent2,
-			}
-			parent.Child = &child2
+				m1 := make(map[string]interface{})
+				m2 := make(map[*map[string]interface{}]interface{})
+				m1["m2"] = &m2
+				//here we make sure that the keys can also be pointers
+				m2[&m1] = "m1"
 
-			parents := []interface{}{&parent, &parent2}
+				encoded, err := s.Encode(&m1)
+				Expect(err).ToNot(HaveOccurred())
+				fmt.Println(encoded)
+				Expect(encoded).To(Equal(`{"o":"@zenaton#0","s":[{"k":["m2"],"v":["@zenaton#1"]},{"k":["@zenaton#0"],"v":["m1"]}]}`))
+			})
+		})
 
-			fmt.Println(indexOf(parents, &parent))
+		Context("with a simple struct", func() {
+			It("represents the struct as an object", func() {
+				sm := SerializeMe{
+					Initialized: true,
+				}
 
-			//expectedSerialized := `{"o":"@zenaton#0","s":[{"n":"Person","p":{"Child":"@zenaton#1","Parent":null}},{"n":"Person","p":{"Child":null,"Parent":"@zenaton#0"}}]}`
-			//encoded, err := s.Encode(parent)
-			//Expect(err).ToNot(HaveOccurred())
-			//fmt.Println("encoded: ", encoded)
-			//Expect(encoded).To(Equal(expectedSerialized))
+				encoded, err := s.Encode(sm)
+				Expect(err).ToNot(HaveOccurred())
+				fmt.Println(encoded)
+				Expect(encoded).To(Equal(`{"o":"@zenaton#0","s":[{"n":"SerializeMe","p":{"Initialized":true}}]}`))
+			})
+		})
+
+		type Person struct {
+			Parent *Person
+			Child  *Person
+		}
+
+		Context("with a struct with circular dependencies", func() {
+			It("represents the struct as an object", func() {
+
+				parent := Person{}
+				child := Person{
+					Parent: &parent,
+				}
+
+				parent.Child = &child
+
+				expectedSerialized := `{"o":"@zenaton#0","s":[{"n":"Person","p":{"Child":"@zenaton#1","Parent":null}},{"n":"Person","p":{"Child":null,"Parent":"@zenaton#0"}}]}`
+				encoded, err := s.Encode(&parent)
+				Expect(err).ToNot(HaveOccurred())
+				fmt.Println("encoded: ", encoded)
+				Expect(encoded).To(Equal(expectedSerialized))
+			})
 		})
 	})
-
-	//todo test with unexported fields!
 
 	//todo: make sure that it handles unexported fields well.
 	type MySimpleStruct struct {
@@ -289,12 +265,13 @@ var _ = Describe("Encode", func() {
 		//Struct struct
 		//UnsafePointer unsafePointer
 	}
+
 	Describe("decode", func() {
-		//s := &zenaton.Serializer{}
+		s := &zenaton.Serializer{}
 		Context("with a simple struct", func() {
 			It("returns an instance with the correct instance variables", func() {
 
-				pointed := "a"
+				pointed := "v"
 				pointed2 := &pointed
 				mySimpleStruct := MySimpleStruct{
 					Bool:    true,
@@ -310,7 +287,7 @@ var _ = Describe("Encode", func() {
 					Uint64:  1,
 					Float32: 1.1,
 					Float64: 1.1,
-					String:  "a",
+					String:  "v",
 					Ptr:     &pointed2,
 				}
 
@@ -333,8 +310,8 @@ var _ = Describe("Encode", func() {
 										"Uint64":1,
 										"Float32":1.1,
 										"Float64":1.1,
-										"String":"a",
-										"Ptr":"a"
+										"String":"v",
+										"Ptr":"v"
 									 }
 								  }
 							   ]
@@ -345,9 +322,58 @@ var _ = Describe("Encode", func() {
 				Expect(encodedStruct).To(Equal(mySimpleStruct))
 			})
 		})
+
+		FContext("an int value", func() {
+			It("returns the int", func() {
+				encoded := `{"d":1,"s":[]}`
+				var myInt int
+				err := s.Decode(encoded, &myInt)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(myInt).To(Equal(1))
+			})
+		})
+
+		FContext("an float value", func() {
+			It("returns the float", func() {
+				encoded := `{"d":1.1,"s":[]}`
+				var myFloat float32
+				err := s.Decode(encoded, &myFloat)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(myFloat).To(Equal(float32(1.1)))
+			})
+		})
+
+		FContext("an boolean value", func() {
+			It("returns the boolean", func() {
+				encoded := `{"d":true,"s":[]}`
+				var myBool bool
+				err := s.Decode(encoded, &myBool)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(myBool).To(Equal(true))
+			})
+		})
+
+		FContext("an uint value", func() {
+			It("returns the uint", func() {
+				encoded := `{"d":1,"s":[]}`
+				var myUint uint
+				err := s.Decode(encoded, &myUint)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(myUint).To(Equal(uint(1)))
+			})
+		})
+
+		FContext("an string value", func() {
+			It("returns the string", func() {
+				encoded := `{"d":"a","s":[]}`
+				var str string
+				err := s.Decode(encoded, &str)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(str).To(Equal("a"))
+			})
+		})
+
 	})
 })
 
-func intrfc(i interface{}) interface{} {
-	return i
-}
+//todo: I should test that the types match in decode, right?
