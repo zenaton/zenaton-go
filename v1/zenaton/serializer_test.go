@@ -7,6 +7,7 @@ import (
 
 	"fmt"
 
+	"github.com/davecgh/go-spew/spew"
 	. "github.com/onsi/gomega"
 	"github.com/zenaton/zenaton-go/v1/zenaton"
 )
@@ -266,7 +267,7 @@ var _ = Describe("Serializer", func() {
 		//UnsafePointer unsafePointer
 	}
 
-	Describe("decode", func() {
+	FDescribe("Decode", func() {
 		s := &zenaton.Serializer{}
 		Context("with a simple struct", func() {
 			It("returns an instance with the correct instance variables", func() {
@@ -323,7 +324,124 @@ var _ = Describe("Serializer", func() {
 			})
 		})
 
-		FContext("an int value", func() {
+		Context("with a simple slice", func() {
+			FIt("decodes into an slice with the correct contents", func() {
+
+				encoded := `{
+							   "o":"@zenaton#0",
+							   "s":[
+								  {
+									 "v":[
+										"a",
+										"b"
+									 ]
+								  }
+							   ]
+							}`
+				expectedArr := []string{"a", "b"}
+
+				var decodedArr []string
+				err := s.Decode(encoded, &decodedArr)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decodedArr).To(Equal(expectedArr))
+			})
+		})
+
+		Context("with a an slice inside an slice", func() {
+			FIt("decodes into an slice with the correct contents", func() {
+
+				encoded := `{
+							   "o":"@zenaton#0",
+							   "s":[
+								  {
+									 "v":["@zenaton#1"]
+								  },
+								  {
+									 "v":["@zenaton#2"]
+								  },
+                                  {
+									 "v":[1]
+								  }
+							   ]
+							}`
+				expectedArr := [][]int{{1}}
+
+				var decodedArr [][]int
+				err := s.Decode(encoded, &decodedArr)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decodedArr).To(Equal(expectedArr))
+			})
+		})
+
+		Context("with a an array inside an array", func() {
+			It("decodes into an array with the correct contents", func() {
+
+				encoded := `{
+							   "o":"@zenaton#0",
+							   "s":[
+								  {
+									 "v":["@zenaton#1"]
+								  },
+								  {
+									 "v":[1]
+								  }
+							   ]
+							}`
+				expectedArr := [][]int{{1}}
+
+				var decodedArr [][]int
+				err := s.Decode(encoded, &decodedArr)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decodedArr).To(Equal(expectedArr))
+			})
+		})
+
+		Context("with a circular array", func() {
+			FIt("decodes into an array with the correct contents", func() {
+
+				encoded := `{
+							   "o":"@zenaton#0",
+							   "s":[
+								  {
+									 "v":["@zenaton#1"]
+								  },
+								  {
+									 "v":["@zenaton#0"]
+								  }
+							   ]
+							}`
+				var arr1 []interface{}
+				var arr2 []interface{}
+
+				arr1 = []interface{}{&arr2}
+				arr2 = []interface{}{&arr1}
+				//spew.Dump("arr1", &arr1)
+				//spew.Dump("arr1", &arr1)
+				//spew.Dump("arr1", &arr1)
+				//spew.Dump("arr1", &arr1)
+				//spew.Dump("arr1", &arr1)
+				//spew.Dump("arr1", &arr1)
+
+				//var intArr1 = interface{}(&arr1)
+				//var user_array []interface{}
+				//var interface_array_inside_decode = interface{}(&user_array)
+				//reflect_value_of_user_array := reflect.ValueOf(interface_array_inside_decode)
+				//
+				//var first_encoded_array []interface{}
+				//reflect_value_first_decoded_array := reflect.ValueOf(&first_encoded_array)
+				//reflect_value_of_user_array.Elem().Set(reflect_value_first_decoded_array.Elem())
+				//spew.Dump("newArr ", &user_array)
+
+				var decodedArr []interface{}
+				err := s.Decode(encoded, &decodedArr)
+				spew.Dump("decodedArr", &decodedArr)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decodedArr).To(Equal(arr1))
+
+			})
+		})
+
+		Context("an int value", func() {
 			It("returns the int", func() {
 				encoded := `{"d":1,"s":[]}`
 				var myInt int
@@ -333,7 +451,7 @@ var _ = Describe("Serializer", func() {
 			})
 		})
 
-		FContext("an float value", func() {
+		Context("an float value", func() {
 			It("returns the float", func() {
 				encoded := `{"d":1.1,"s":[]}`
 				var myFloat float32
@@ -343,7 +461,7 @@ var _ = Describe("Serializer", func() {
 			})
 		})
 
-		FContext("an boolean value", func() {
+		Context("an boolean value", func() {
 			It("returns the boolean", func() {
 				encoded := `{"d":true,"s":[]}`
 				var myBool bool
@@ -353,7 +471,7 @@ var _ = Describe("Serializer", func() {
 			})
 		})
 
-		FContext("an uint value", func() {
+		Context("an uint value", func() {
 			It("returns the uint", func() {
 				encoded := `{"d":1,"s":[]}`
 				var myUint uint
@@ -363,7 +481,7 @@ var _ = Describe("Serializer", func() {
 			})
 		})
 
-		FContext("an string value", func() {
+		Context("an string value", func() {
 			It("returns the string", func() {
 				encoded := `{"d":"a","s":[]}`
 				var str string
