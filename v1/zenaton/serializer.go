@@ -2,6 +2,7 @@ package zenaton
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -40,226 +41,225 @@ type Object struct {
 //todo: handle interfaces
 
 func (s *Serializer) Encode(data interface{}) (string, error) {
-	//s.encoded = []interface{}{}
-	//s.pointers = []uintptr{}
-	//
-	//rv := reflect.ValueOf(data)
-	//kind := rv.Kind()
-	//isValid := validType(kind)
-	//if !isValid {
-	//	return "", errors.New(fmt.Sprintf("cannot encode data of kind: %s", kind.String()))
-	//}
-	//
-	//value := make(map[string]interface{})
-	//
-	////todo: handle pointers to values
-	////todo: handle interfaces
-	//if basicType(kind) || reflect.TypeOf(data) == nil {
-	//	value[KEY_DATA] = data
-	//} else {
-	//	value[KEY_OBJECT] = s.encodeToStore(rv)
-	//}
-	//
-	//value[KEY_STORE] = s.encoded
-	//encoded, err := json.Marshal(value)
-	//if err != nil {
-	//	return "", err
-	//}
-	//
-	//return string(encoded), nil
-	v, err := json.Marshal(data)
-	return string(v), err
+	s.encoded = []interface{}{}
+	s.pointers = []uintptr{}
+
+	rv := reflect.ValueOf(data)
+	kind := rv.Kind()
+	isValid := validType(kind)
+	if !isValid {
+		return "", errors.New(fmt.Sprintf("cannot encode data of kind: %s", kind.String()))
+	}
+
+	value := make(map[string]interface{})
+
+	//todo: handle pointers to values
+	//todo: handle interfaces
+	if basicType(kind) || reflect.TypeOf(data) == nil {
+		value[KEY_DATA] = data
+	} else {
+		value[KEY_OBJECT] = s.encodeToStore(rv)
+	}
+
+	value[KEY_STORE] = s.encoded
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return "", err
+	}
+
+	return string(encoded), nil
+	//v, err := json.Marshal(data)
+	//return string(v), err
 }
 
-//func basicType(kind reflect.Kind) bool {
-//	return kind == reflect.Bool ||
-//		kind == reflect.Int ||
-//		kind == reflect.Int8 ||
-//		kind == reflect.Int16 ||
-//		kind == reflect.Int32 ||
-//		kind == reflect.Int64 ||
-//		kind == reflect.Uint ||
-//		kind == reflect.Uint8 ||
-//		kind == reflect.Uint16 ||
-//		kind == reflect.Uint32 ||
-//		kind == reflect.Uint64 ||
-//		kind == reflect.Uintptr ||
-//		kind == reflect.Float32 ||
-//		kind == reflect.Float64 ||
-//		kind == reflect.String
-//}
+func basicType(kind reflect.Kind) bool {
+	return kind == reflect.Bool ||
+		kind == reflect.Int ||
+		kind == reflect.Int8 ||
+		kind == reflect.Int16 ||
+		kind == reflect.Int32 ||
+		kind == reflect.Int64 ||
+		kind == reflect.Uint ||
+		kind == reflect.Uint8 ||
+		kind == reflect.Uint16 ||
+		kind == reflect.Uint32 ||
+		kind == reflect.Uint64 ||
+		kind == reflect.Uintptr ||
+		kind == reflect.Float32 ||
+		kind == reflect.Float64 ||
+		kind == reflect.String
+}
 
-//func (s *Serializer) encodeToStore(object reflect.Value) interface{} {
-//	spew.Dump(object)
-//	for object.Kind() == reflect.Interface {
-//		object = object.Elem()
-//	}
-//	fmt.Println("kind in encodeToStore: ", object.Kind())
-//	if object.Kind() == reflect.Ptr {
-//		if object.IsNil() {
-//			return nil
-//		}
-//		id := indexOf(s.pointers, object.Pointer())
-//		fmt.Println("id: ", id)
-//		if id != -1 {
-//			return storeID(id)
-//		}
-//	}
-//	return s.storeAndEncode(object)
-//}
-//
-//func (s *Serializer) storeAndEncode(object reflect.Value) string {
-//	//fmt.Printf("2: %+v\n", object)
-//	id := len(s.pointers)
-//	if object.Kind() == reflect.Ptr {
-//		s.pointers = insertPtr(s.pointers, object.Pointer(), id)
-//	} else {
-//		// this pointer is never actually used. It is only added so that the length of pointers is correct
-//		s.pointers = insertPtr(s.pointers, reflect.ValueOf(&object).Pointer(), id)
-//	}
-//	if len(s.pointers) > 3 {
-//		panic("nope")
-//	}
-//	s.encoded = insert(s.encoded, s.encodedObjectByType(object), id)
-//	return storeID(id)
-//}
-//
-//func (s *Serializer) encodedObjectByType(object reflect.Value) map[string]interface{} {
-//	object = reflect.Indirect(object)
-//	kind := object.Kind()
-//	fmt.Println("kind in encodedObjectByType: ", kind)
-//	switch kind {
-//	case reflect.Struct:
-//		return s.encodeStruct(object)
-//	case reflect.Array, reflect.Slice:
-//		return s.encodeArray(object)
-//	case reflect.Map:
-//		return s.encodeMap(object)
-//	}
-//
-//	return nil
-//}
-//
-//func storeID(id int) string {
-//	return ID_PREFIX + strconv.Itoa(id)
-//}
+func (s *Serializer) encodeToStore(object reflect.Value) interface{} {
+	spew.Dump(object)
+	for object.Kind() == reflect.Interface {
+		object = object.Elem()
+	}
+	fmt.Println("kind in encodeToStore: ", object.Kind())
+	if object.Kind() == reflect.Ptr {
+		if object.IsNil() {
+			return nil
+		}
+		id := indexOf(s.pointers, object.Pointer())
+		fmt.Println("id: ", id)
+		if id != -1 {
+			return storeID(id)
+		}
+	}
+	return s.storeAndEncode(object)
+}
 
-//func validType(kind reflect.Kind) bool {
-//	//todo: can we really not serialize complex?
-//	return !(kind == reflect.Complex64 ||
-//		kind == reflect.Complex128 ||
-//		kind == reflect.Chan ||
-//		kind == reflect.Func ||
-//		kind == reflect.UnsafePointer)
-//}
+func (s *Serializer) storeAndEncode(object reflect.Value) string {
+	//fmt.Printf("2: %+v\n", object)
+	id := len(s.pointers)
+	if object.Kind() == reflect.Ptr {
+		s.pointers = insertPtr(s.pointers, object.Pointer(), id)
+	} else {
+		// this pointer is never actually used. It is only added so that the length of pointers is correct
+		s.pointers = insertPtr(s.pointers, reflect.ValueOf(&object).Pointer(), id)
+	}
+	if len(s.pointers) > 3 {
+		panic("nope")
+	}
+	s.encoded = insert(s.encoded, s.encodedObjectByType(object), id)
+	return storeID(id)
+}
 
-//func (s *Serializer) encodeArray(a reflect.Value) map[string]interface{} {
-//
-//	var array []interface{}
-//	for i := 0; i < a.Len(); i++ {
-//		rv := a.Index(i)
-//		fmt.Println("rv: ", rv)
-//		for rv.Kind() == reflect.Interface && rv.Elem().Kind() != reflect.Invalid {
-//			rv = rv.Elem()
-//		}
-//		kind := rv.Kind()
-//		fmt.Println("kind in encodeArray2::::: ", kind)
-//		if basicType(kind) || kind == reflect.Interface {
-//			fmt.Println("basic kind or interface: ", rv.Interface(), rv)
-//			array = append(array, rv.Interface())
-//			continue
-//		}
-//		array = append(array, s.encodeToStore(rv))
-//	}
-//
-//	return map[string]interface{}{
-//		KEY_ARRAY: array,
-//	}
-//}
-//
-////todo: test with NaN keys :\
-//func (s *Serializer) encodeMap(m reflect.Value) map[string]interface{} {
-//
-//	var keys []interface{}
-//	var values []interface{}
-//
-//	keyValues := m.MapKeys()
-//	for _, kv := range keyValues {
-//		for kv.Kind() == reflect.Interface {
-//			kv = kv.Elem()
-//		}
-//		kind := kv.Kind()
-//		fmt.Println("key::::: ", kind)
-//		if basicType(kind) {
-//			keys = append(keys, kv.Interface())
-//		} else {
-//			keys = append(keys, s.encodeToStore(kv))
-//		}
-//
-//		//todo: abstract this out into another function, as I keep doing this
-//		valueValue := m.MapIndex(kv)
-//		for valueValue.Kind() == reflect.Interface {
-//			valueValue = valueValue.Elem()
-//		}
-//		kind = valueValue.Kind()
-//		fmt.Println("value::::: ", kind)
-//		if basicType(kind) {
-//			values = append(values, valueValue.Interface())
-//		} else {
-//			values = append(values, s.encodeToStore(valueValue))
-//		}
-//	}
-//
-//	return map[string]interface{}{
-//		KEY_KEYS:  keys,
-//		KEY_ARRAY: values,
-//	}
-//}
-//
-//func (s *Serializer) encodeStruct(object reflect.Value) map[string]interface{} {
-//
-//	return map[string]interface{}{
-//		KEY_OBJECT_NAME:       object.Type().Name(),
-//		KEY_OBJECT_PROPERTIES: s.encodeProperties(object),
-//	}
-//}
-//
-//func (s *Serializer) encodeProperties(o reflect.Value) map[string]interface{} {
-//	dataT := o.Type()
-//	propMap := make(map[string]interface{})
-//	for i := 0; i < o.NumField(); i++ {
-//		key := dataT.Field(i).Name
-//		fmt.Println("key: ", key, "kind: ", o.Field(i).Kind())
-//		if basicType(o.Field(i).Kind()) {
-//			propMap[key] = o.Field(i).Interface()
-//			continue
-//		}
-//		propMap[key] = s.encodeToStore(o.Field(i))
-//	}
-//	return propMap
-//}
-//
-////todo: take this out. It's just to prevent infinate loops
-//var count = 0
-//
-//func indexOf(slice []uintptr, item uintptr) int {
-//	count++
-//	if count > 50 {
-//		panic(count)
-//	}
-//
-//	fmt.Println("pointers: ", slice, "item: ", item)
-//	for i := range slice {
-//		if slice[i] == item {
-//			return i
-//		}
-//	}
-//	return -1
-//}
+func (s *Serializer) encodedObjectByType(object reflect.Value) map[string]interface{} {
+	object = reflect.Indirect(object)
+	kind := object.Kind()
+	fmt.Println("kind in encodedObjectByType: ", kind)
+	switch kind {
+	case reflect.Struct:
+		return s.encodeStruct(object)
+	case reflect.Array, reflect.Slice:
+		return s.encodeArray(object)
+	case reflect.Map:
+		return s.encodeMap(object)
+	}
+
+	return nil
+}
+
+func storeID(id int) string {
+	return ID_PREFIX + strconv.Itoa(id)
+}
+
+func validType(kind reflect.Kind) bool {
+	//todo: can we really not serialize complex?
+	return !(kind == reflect.Complex64 ||
+		kind == reflect.Complex128 ||
+		kind == reflect.Chan ||
+		kind == reflect.Func ||
+		kind == reflect.UnsafePointer)
+}
+
+func (s *Serializer) encodeArray(a reflect.Value) map[string]interface{} {
+
+	var array []interface{}
+	for i := 0; i < a.Len(); i++ {
+		rv := a.Index(i)
+		fmt.Println("rv: ", rv)
+		for rv.Kind() == reflect.Interface && rv.Elem().Kind() != reflect.Invalid {
+			rv = rv.Elem()
+		}
+		kind := rv.Kind()
+		fmt.Println("kind in encodeArray2::::: ", kind)
+		if basicType(kind) || kind == reflect.Interface {
+			fmt.Println("basic kind or interface: ", rv.Interface(), rv)
+			array = append(array, rv.Interface())
+			continue
+		}
+		array = append(array, s.encodeToStore(rv))
+	}
+
+	return map[string]interface{}{
+		KEY_ARRAY: array,
+	}
+}
+
+//todo: test with NaN keys :\
+func (s *Serializer) encodeMap(m reflect.Value) map[string]interface{} {
+
+	var keys []interface{}
+	var values []interface{}
+
+	keyValues := m.MapKeys()
+	for _, kv := range keyValues {
+		for kv.Kind() == reflect.Interface {
+			kv = kv.Elem()
+		}
+		kind := kv.Kind()
+		fmt.Println("key::::: ", kind)
+		if basicType(kind) {
+			keys = append(keys, kv.Interface())
+		} else {
+			keys = append(keys, s.encodeToStore(kv))
+		}
+
+		//todo: abstract this out into another function, as I keep doing this
+		valueValue := m.MapIndex(kv)
+		for valueValue.Kind() == reflect.Interface {
+			valueValue = valueValue.Elem()
+		}
+		kind = valueValue.Kind()
+		fmt.Println("value::::: ", kind)
+		if basicType(kind) {
+			values = append(values, valueValue.Interface())
+		} else {
+			values = append(values, s.encodeToStore(valueValue))
+		}
+	}
+
+	return map[string]interface{}{
+		KEY_KEYS:  keys,
+		KEY_ARRAY: values,
+	}
+}
+
+func (s *Serializer) encodeStruct(object reflect.Value) map[string]interface{} {
+
+	return map[string]interface{}{
+		KEY_OBJECT_NAME:       object.Type().Name(),
+		KEY_OBJECT_PROPERTIES: s.encodeProperties(object),
+	}
+}
+
+func (s *Serializer) encodeProperties(o reflect.Value) map[string]interface{} {
+	dataT := o.Type()
+	propMap := make(map[string]interface{})
+	for i := 0; i < o.NumField(); i++ {
+		key := dataT.Field(i).Name
+		fmt.Println("key: ", key, "kind: ", o.Field(i).Kind())
+		if basicType(o.Field(i).Kind()) {
+			propMap[key] = o.Field(i).Interface()
+			continue
+		}
+		propMap[key] = s.encodeToStore(o.Field(i))
+	}
+	return propMap
+}
+
+//todo: take this out. It's just to prevent infinate loops
+
+func indexOf(slice []uintptr, item uintptr) int {
+	count++
+	if count > 50 {
+		panic(count)
+	}
+
+	fmt.Println("pointers: ", slice, "item: ", item)
+	for i := range slice {
+		if slice[i] == item {
+			return i
+		}
+	}
+	return -1
+}
 
 func (s *Serializer) Decode(data string, value interface{}) error {
 	//todo: handle race conditions
-	//todo: check that value is a pointer!
+	//todo: check that value is a pointer! think the json part at the biginning does it
 
 	//todo: I think I can build a better object to unmarshal into
 	var parsedJSON map[string]interface{}
@@ -312,14 +312,12 @@ func (s *Serializer) Decode(data string, value interface{}) error {
 //todo: i'm sure this function needs to return an error
 func (s *Serializer) decodeFromStore(id int, encoded map[string]interface{}, rv reflect.Value) {
 
-	fmt.Println("id, encoded, decoded", id, encoded, s.decoded)
-	for i, v := range s.decoded {
-		spew.Dump(i, v.Interface())
-	}
+	fmt.Println("id, encoded, decoded: ", id, encoded, s.decoded)
 
 	if len(s.decoded) > id {
 		decoded := s.decoded[id]
-		rv.Set(indirect(decoded))
+		fmt.Println("********", decoded, rv)
+		rv.Set(decoded)
 		return
 	}
 
@@ -338,83 +336,146 @@ func (s *Serializer) decodeFromStore(id int, encoded map[string]interface{}, rv 
 	}
 }
 
+var count int
+
 func (s *Serializer) decodeArray(id int, array interface{}, rv reflect.Value) {
+	count++
+	if count > 20 {
+		panic(count)
+	}
+
+	fmt.Println("decodeArray: ", array)
 
 	arr := array.([]interface{})
 
-	bob := indirect(rv)
+	var newRV reflect.Value
+	switch rv.Kind() {
+	case reflect.Interface:
+		//todo: is this ok? I think I can't really do better.
+		var newSlice []interface{}
+		fmt.Println("&&&&&&&&&&&&&&&&&&&&&&&&&&& decoded, id", s.decoded, id)
+		newRV = reflect.ValueOf(&newSlice)
 
-	switch bob.Kind() {
-	case reflect.Slice:
-		//newSlice := make([]interface{}, len(arr))
-		//newSliceRV := reflect.ValueOf(&newSlice)
-		newSliceRV := reflect.MakeSlice(indirect(rv).Type(), len(arr), cap(arr))
-		s.decoded = insertRV(s.decoded, newSliceRV, id)
-		for i, v := range arr {
-			s.decodeElement(indirect(newSliceRV).Index(i), v)
+	default:
+		newRV = rv
+	}
+
+	s.decoded = insertRV(s.decoded, newRV, id)
+	newRV = indirect(newRV)
+
+	for i, arrV := range arr {
+
+		// Get element of array, growing if necessary.
+		if newRV.Kind() == reflect.Slice {
+
+			//newRV = reflect.Append(newRV, s.decodeElement(newRV.Index(i), arrV))
+
+			// Grow slice if necessary
+			if i >= newRV.Cap() {
+				newcap := newRV.Cap() + newRV.Cap()/2
+				if newcap < 4 {
+					newcap = 4
+				}
+				newv := reflect.MakeSlice(newRV.Type(), newRV.Len(), newcap)
+				reflect.Copy(newv, newRV)
+				newRV.Set(newv)
+			}
+			if i >= newRV.Len() {
+				newRV.SetLen(i + 1)
+			}
 		}
-		indirect(rv).Set(indirect(newSliceRV))
+
+		if i < newRV.Len() {
+			// Decode into element.
+			s.decodeElement(newRV.Index(i), arrV)
+		} else {
+			panic("shouldn't get here")
+			// Ran out of fixed array: skip.
+		}
+	}
+
+	//rv = indirect(rv)
+	fmt.Println("%%%%%%%%%%%%%%%%%%%% set in decode array", rv.Interface(), s.decoded[id].Interface())
+
+	if rv.CanAddr() {
+		rv.Set(s.decoded[id])
+	} else {
+		rv.Elem().Set(indirect(s.decoded[id]))
+	}
+
+	//json.Unmarshal()
+
+	//switch rv.Kind() {
+	//case reflect.Slice:
+	//	//newSlice := make([]interface{}, len(arr))
+	//	//newSliceRV := reflect.ValueOf(&newSlice)
+	//	newSliceRV := reflect.MakeSlice(indirect(rv).Type(), len(arr), cap(arr))
+	//	s.decoded = insertRV(s.decoded, newSliceRV, id)
+	//	for i, v := range arr {
+	//		s.decodeElement(indirect(newSliceRV).Index(i), v)
+	//	}
+	//	fmt.Println("bob: ", newSliceRV.Interface())
+	//	indirect(rv).Set(indirect(newSliceRV))
 	//case reflect.Array:
 	//	newArrRV := reflect.ValueOf(&array)
 	//	s.decoded = insertRV(s.decoded, newArrRV, id)
 	//	for i, v := range arr {
-	//		s.decodeElement(newArrRV.Elem().Index(i), v)
+	//		s.decodeElement(indirect(newArrRV).Index(i), v)
 	//	}
-	//	rv.Set(newArrRV.Elem())
-	default:
-		fmt.Println("default: ", arr)
-
-		var newRV = reflect.ValueOf(&arr)
-		//var newSlice []interface{}
-		//newRV := reflect.MakeSlice(indirect(reflect.ValueOf(&newSlice)).Type(), len(arr), cap(arr))
-		s.decoded = insertRV(s.decoded, newRV, id)
-		s.decodeElement(indirect(newRV), arr[0])
-		indirect(rv).Set(newRV)
-	}
-
-}
-
-func (s *Serializer) decodeLegacyArray(array interface{}, rv reflect.Value) {
-	fmt.Println("in decodeLegacyArray")
-
-	arr := array.([]interface{})
-
-	rv = indirect(rv)
-
-	switch rv.Kind() {
-	case reflect.Slice:
-		newSlice := reflect.MakeSlice(rv.Type(), len(arr), cap(arr))
-		for i, v := range arr {
-			s.decodeElement(newSlice.Index(i), v)
-		}
-
-		rv.Set(newSlice)
-	case reflect.Array:
-		for i, v := range arr {
-			s.decodeElement(rv.Index(i), v)
-		}
-	default:
-		fmt.Println("default: ", arr)
-
-		var newRV = rv
-		s.decodeElement(newRV, arr[0])
-		rv.Set(newRV)
-	}
+	//	fmt.Println("bob: ", newArrRV.Interface())
+	//	indirect(rv).Set(indirect(newArrRV))
+	//default:
+	//	//var newRV = reflect.ValueOf(&arr)
+	//	newSliceRV := reflect.MakeSlice(indirect(reflect.ValueOf(&arr)).Type(), 0, cap(arr))
+	//	s.decoded = insertRV(s.decoded, newSliceRV, id)
+	//	for i, v := range arr {
+	//		bob := arr[i]
+	//		item := reflect.New(reflect.TypeOf(&bob))
+	//		fmt.Println("can address item: ", item.CanAddr())
+	//		s.decodeElement(item, v)
+	//		reflect.Append(newSliceRV, item)
+	//	}
+	//	fmt.Println("bob: ", newSliceRV.Interface())
+	//	indirect(rv).Set(indirect(newSliceRV))
+	//}
 
 }
+
+//func (s *Serializer) decodeLegacyArray(array interface{}, rv reflect.Value) {
+//	fmt.Println("array: ", array)
+//
+//	arr := array.([]interface{})
+//
+//	rv = indirect(rv)
+//
+//	switch rv.Kind() {
+//	case reflect.Slice:
+//		newSlice := reflect.MakeSlice(rv.Type(), len(arr), cap(arr))
+//		for i, v := range arr {
+//			s.decodeElement(newSlice.Index(i), v)
+//		}
+//
+//		rv.Set(newSlice)
+//	case reflect.Array:
+//		for i, v := range arr {
+//			s.decodeElement(rv.Index(i), v)
+//		}
+//	default:
+//		fmt.Println("default: ", arr)
+//
+//		var newRV = rv
+//		s.decodeElement(newRV, arr[0])
+//		rv.Set(newRV)
+//	}
+//
+//}
 
 //todo: should I handle the case in which the KEY_OBJECT_PROPERTIES don't match the struct passed in? seems yes/. actually just do like the json package does
 func (s *Serializer) decodeStruct(id int, encodedObject interface{}, v reflect.Value) {
-	var decoded []interface{}
-
-	//if len(decoded) > id {
-	//	decodeTo = decoded[id]
-	//	return
-	//}
 
 	//todo: this only works with ptr value, make sure that is always going to be the case
 	o := encodedObject.(map[string]interface{})
-	decoded = append(decoded, o)
+	s.decoded = append(s.decoded, reflect.ValueOf(o))
 
 	for key, value := range o {
 
@@ -425,15 +486,18 @@ func (s *Serializer) decodeStruct(id int, encodedObject interface{}, v reflect.V
 }
 
 func (s *Serializer) decodeElement(rv reflect.Value, value interface{}) {
-	rv = indirect(rv)
+	fmt.Println("decodeElement value: ", value)
 
 	potentialID, ok := value.(string)
+	fmt.Println("str: ", value)
 	if ok {
+		rv = indirect(rv)
 		id, isStoreID := s.storeID(potentialID)
 		if isStoreID {
 			encoded := s.encoded[id]
 			fmt.Println("decodeElement id, encoded", id, encoded)
 			s.decodeFromStore(id, encoded.(map[string]interface{}), rv)
+			fmt.Println("returned ", rv.Interface(), rv.Kind())
 			return
 		}
 	}
@@ -446,7 +510,9 @@ func (s *Serializer) decodeElement(rv reflect.Value, value interface{}) {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		rv.SetUint(uint64(value.(float64)))
 	case reflect.Float32, reflect.Float64:
-		rv.SetFloat(value.(float64))
+		//panic("bob")
+		//todo: change this
+		rv.Set(reflect.ValueOf(value).Convert(rv.Type()))
 	case reflect.String:
 		rv.SetString(value.(string))
 		//todo:
@@ -454,11 +520,10 @@ func (s *Serializer) decodeElement(rv reflect.Value, value interface{}) {
 		//case reflect.Chan:
 		//case reflect.Func:
 	case reflect.Interface:
-		fmt.Println("interface: ", value)
 		rv.Set(reflect.ValueOf(value))
 		//case reflect.Map:
 	case reflect.Array, reflect.Slice:
-		s.decodeLegacyArray(value, rv)
+		//todo? s.decodeLegacyArray(value, rv)
 	//case reflect.Struct:
 	//	rv.Set(reflect.ValueOf(value))
 	//todo: this is not supported by json i guess?
@@ -478,7 +543,6 @@ func (s *Serializer) decodeElement(rv reflect.Value, value interface{}) {
 }
 
 func (s *Serializer) storeID(str string) (int, bool) {
-	fmt.Println("str: ", str)
 	if !strings.HasPrefix(str, ID_PREFIX) {
 		return 0, false
 	}
@@ -563,10 +627,8 @@ func indirect(v reflect.Value) reflect.Value {
 		// Load value from interface, but only if the result will be
 		// usefully addressable.
 		if v.Kind() == reflect.Interface && !v.IsNil() {
-			fmt.Println("hi")
 			e := v.Elem()
 			//if e.Kind() == reflect.Ptr && !e.IsNil() {
-			fmt.Println("hi2")
 			v = e
 			continue
 			//}
