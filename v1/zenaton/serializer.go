@@ -322,7 +322,7 @@ func (s *Serializer) decodeFromStore(id int, encoded map[string]interface{}, rv 
 		decoded := s.decoded[id]
 		fmt.Println("********", decoded.Kind(), rv.Kind())
 		//rv.Set(indirect(decoded))
-		indirect(rv).Set(decoded)
+		rv.Set(decoded)
 		return
 	}
 
@@ -441,17 +441,20 @@ func (s *Serializer) decodeMap(id int, keys interface{}, values interface{}, v r
 	fmt.Println("the thing:::::::::: ", newV, newV.Kind())
 	s.decoded = append(s.decoded, newV)
 	newV = indirect(newV)
+	if newV.IsNil() {
+		newV.Set(reflect.MakeMap(newV.Type()))
+	}
 
 	for i, k := range ks {
 		v := vs[i]
 
 		fmt.Println("newV.Type()", newV.Type())
 
-		newKey := reflect.New(newV.Type().Key())
-		newValue := reflect.New(newV.Type().Elem())
+		newKey := reflect.New(newV.Type().Key()).Elem()
+		newValue := reflect.New(newV.Type().Elem()).Elem()
 		s.decodeElement(newKey, k)
 		s.decodeElement(newValue, v)
-		newV.SetMapIndex(indirect(newKey), indirect(newValue))
+		newV.SetMapIndex(newKey, newValue)
 	}
 
 	if v.CanAddr() {

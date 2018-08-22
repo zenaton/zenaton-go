@@ -347,12 +347,17 @@ var _ = Describe("Serializer", func() {
 			Expect(encoded).To(Equal(encoded))
 		})
 
-		FIt("should decode from data", func() {
+		It("should decode from data", func() {
 
 			var toDecode map[string]interface{}
 			err := s.Decode(encoded, &toDecode)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(toDecode["m2"]).To(Equal(&toDecode))
+			m2 := toDecode["m2"].(map[interface{}]interface{})
+			var keys []interface{}
+			for k := range m2 {
+				keys = append(keys, k)
+			}
+			Expect(keys[0]).To(Equal(&toDecode))
 		})
 	})
 })
