@@ -1,4 +1,4 @@
-package zenaton_test
+package zenaton
 
 import (
 	. "github.com/onsi/ginkgo"
