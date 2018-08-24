@@ -1,4 +1,4 @@
-package zenaton
+package serializer
 
 import (
 	"encoding/json"
@@ -12,24 +12,25 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
-type Person struct {
-	Parent *Person
-	Child  *Person
-}
-
 const (
-	ID_PREFIX             = "@zenaton#"
-	KEY_OBJECT            = "o" // JSON key for objects
-	KEY_OBJECT_NAME       = "n" // JSON key for class name
-	KEY_OBJECT_PROPERTIES = "p" // JSON key for object vars
-	KEY_ARRAY             = "v" // JSON key for array and hashes
-	KEY_KEYS              = "k" // JSON key the array of keys (in a map)
-	KEY_DATA              = "d" // JSON key for json compatibles types
-	KEY_STORE             = "s" // JSON key for deserialized complex object
+	ID_PREFIX = "@zenaton#"
 )
 
-type Serializer struct {
-	encoded  []interface{}
+type format struct {
+	Data   interface{}   `json:"d,omitempty"`
+	Object string        `json:"o,omitempty"`
+	Store  []StoreObject `json:"s"`
+}
+
+type StoreObject struct {
+	Name       string                 `json:"n,omitempty"`
+	Keys       []interface{}          `json:"k,omitempty"`
+	Values     []interface{}          `json:"v,omitempty"`
+	Properties map[string]interface{} `json:"p,omitempty"`
+}
+
+type serializer struct {
+	encoded  []StoreObject
 	decoded  []reflect.Value
 	pointers []uintptr
 }
@@ -39,15 +40,7 @@ type Object struct {
 	Properties map[string]interface{} `json:"p"`
 }
 
-//todo: is this enough? what about the recursive case?
-//todo: make sure anonomous structs work
-//todo: handle pointers to values
-//todo: make sure maps with other things besides strings as keys work
-//todo: handle interfaces
-
-func (s *Serializer) Encode(data interface{}) (string, error) {
-	s.encoded = []interface{}{}
-	s.pointers = []uintptr{}
+func Encode(data interface{}) (string, error) {
 
 	rv := reflect.ValueOf(data)
 	kind := rv.Kind()
@@ -56,17 +49,27 @@ func (s *Serializer) Encode(data interface{}) (string, error) {
 		return "", errors.New(fmt.Sprintf("cannot encode data of kind: %s", kind.String()))
 	}
 
-	value := make(map[string]interface{})
+	s := serializer{}
+	s.encoded = []StoreObject{}
+	s.pointers = []uintptr{}
 
-	//todo: handle pointers to values
-	//todo: handle interfaces
-	if basicType(rv) || reflect.TypeOf(data) == nil {
-		value[KEY_DATA] = data
+	return s.encode(rv, data)
+}
+
+func (s *serializer) encode(rv reflect.Value, data interface{}) (string, error) {
+
+	value := format{}
+
+	if reflect.TypeOf(data) == nil {
+		//special case, as the json marshal would normally remove the "d". but here we want it to show that the data is nil and not an empty string
+		return `{"d":null,"s":[]}`, nil
+	} else if basicType(rv) {
+		value.Data = data
 	} else {
-		value[KEY_OBJECT] = s.encodeToStore(rv)
+		value.Object = s.encodeToStore(rv)
 	}
 
-	value[KEY_STORE] = s.encoded
+	value.Store = s.encoded
 	encoded, err := json.Marshal(value)
 	if err != nil {
 		return "", err
@@ -99,7 +102,7 @@ func basicType(rv reflect.Value) bool {
 		kind == reflect.String
 }
 
-func (s *Serializer) encodeToStore(object reflect.Value) interface{} {
+func (s *serializer) encodeToStore(object reflect.Value) string {
 	spew.Dump(object)
 	for object.Kind() == reflect.Interface {
 		object = object.Elem()
@@ -107,7 +110,7 @@ func (s *Serializer) encodeToStore(object reflect.Value) interface{} {
 	fmt.Println("kind in encodeToStore: ", object.Kind())
 	if object.Kind() == reflect.Ptr {
 		if object.IsNil() {
-			return nil
+			return ""
 		}
 		id := indexOf(s.pointers, object.Pointer())
 		fmt.Println("id: ", id)
@@ -118,8 +121,7 @@ func (s *Serializer) encodeToStore(object reflect.Value) interface{} {
 	return s.storeAndEncode(object)
 }
 
-func (s *Serializer) storeAndEncode(object reflect.Value) string {
-	//fmt.Printf("2: %+v\n", object)
+func (s *serializer) storeAndEncode(object reflect.Value) string {
 	id := len(s.pointers)
 	if object.Kind() == reflect.Ptr {
 		s.pointers = insertPtr(s.pointers, object.Pointer(), id)
@@ -127,15 +129,12 @@ func (s *Serializer) storeAndEncode(object reflect.Value) string {
 		// this pointer is never actually used. It is only added so that the length of pointers is correct
 		s.pointers = insertPtr(s.pointers, reflect.ValueOf(&object).Pointer(), id)
 	}
-	if len(s.pointers) > 6 {
-		//todo: do something better here
-		panic("nope")
-	}
+
 	s.encoded = insert(s.encoded, s.encodedObjectByType(object), id)
 	return storeID(id)
 }
 
-func (s *Serializer) encodedObjectByType(object reflect.Value) map[string]interface{} {
+func (s *serializer) encodedObjectByType(object reflect.Value) StoreObject {
 	object = reflect.Indirect(object)
 	kind := object.Kind()
 	fmt.Println("kind in encodedObjectByType: ", kind)
@@ -148,7 +147,7 @@ func (s *Serializer) encodedObjectByType(object reflect.Value) map[string]interf
 		return s.encodeMap(object)
 	}
 
-	return nil
+	return StoreObject{}
 }
 
 func storeID(id int) string {
@@ -156,15 +155,22 @@ func storeID(id int) string {
 }
 
 func validType(kind reflect.Kind) bool {
-	//todo: can we really not serialize complex?
-	return !(kind == reflect.Complex64 ||
-		kind == reflect.Complex128 ||
-		kind == reflect.Chan ||
-		kind == reflect.Func ||
-		kind == reflect.UnsafePointer)
+
+	switch kind {
+	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
+		reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32,
+		reflect.Uint64, reflect.Uintptr, reflect.Float32, reflect.Float64, reflect.Array,
+		reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice, reflect.String,
+		reflect.Struct, reflect.Invalid:
+		return true
+	case reflect.UnsafePointer, reflect.Complex64, reflect.Complex128, reflect.Chan,
+		reflect.Func:
+		return false
+	}
+	return false
 }
 
-func (s *Serializer) encodeArray(a reflect.Value) map[string]interface{} {
+func (s *serializer) encodeArray(a reflect.Value) StoreObject {
 
 	var array []interface{}
 	for i := 0; i < a.Len(); i++ {
@@ -183,13 +189,12 @@ func (s *Serializer) encodeArray(a reflect.Value) map[string]interface{} {
 		array = append(array, s.encodeToStore(rv))
 	}
 
-	return map[string]interface{}{
-		KEY_ARRAY: array,
+	return StoreObject{
+		Values: array,
 	}
 }
 
-//todo: test with NaN keys :\
-func (s *Serializer) encodeMap(m reflect.Value) map[string]interface{} {
+func (s *serializer) encodeMap(m reflect.Value) StoreObject {
 
 	var keys []interface{}
 	var values []interface{}
@@ -220,28 +225,30 @@ func (s *Serializer) encodeMap(m reflect.Value) map[string]interface{} {
 		}
 	}
 
-	return map[string]interface{}{
-		KEY_KEYS:  keys,
-		KEY_ARRAY: values,
+	return StoreObject{
+		Keys:   keys,
+		Values: values,
 	}
 }
 
-func (s *Serializer) encodeStruct(object reflect.Value) map[string]interface{} {
+func (s *serializer) encodeStruct(object reflect.Value) StoreObject {
 
-	return map[string]interface{}{
-		KEY_OBJECT_NAME:       object.Type().Name(),
-		KEY_OBJECT_PROPERTIES: s.encodeProperties(object),
+	return StoreObject{
+		Name:       object.Type().Name(),
+		Properties: s.encodeProperties(object),
 	}
 }
 
-func (s *Serializer) encodeProperties(o reflect.Value) map[string]interface{} {
+func (s *serializer) encodeProperties(o reflect.Value) map[string]interface{} {
 	dataT := o.Type()
 	propMap := make(map[string]interface{})
 	for i := 0; i < o.NumField(); i++ {
 		key := dataT.Field(i).Name
 		fmt.Println("1key: ", key, "kind: ", o.Field(i).Kind())
 		if basicType(o.Field(i)) {
-			propMap[key] = o.Field(i).Interface()
+			if o.Field(i).CanInterface() {
+				propMap[key] = o.Field(i).Interface()
+			}
 			continue
 		}
 		fmt.Println("")
@@ -261,26 +268,32 @@ func indexOf(slice []uintptr, item uintptr) int {
 	return -1
 }
 
-func (s *Serializer) Decode(data string, value interface{}) error {
-	//todo: handle race conditions
-	//todo: check that value is a pointer! think the json part at the biginning does it
+func Decode(data string, value interface{}) error {
 
-	//todo: I think I can build a better object to unmarshal into
-	var parsedJSON map[string]interface{}
+	var parsedJSON format
 	err := json.Unmarshal([]byte(data), &parsedJSON)
 	if err != nil {
 		return err
 	}
 
-	s.decoded = []reflect.Value{}
-	s.encoded = parsedJSON[KEY_STORE].([]interface{})
-	fmt.Println("encoded: ", s.encoded)
-
 	rv := reflect.ValueOf(value)
 
-	simpleValue, ok := parsedJSON[KEY_DATA]
-	if ok {
-		//json.Unmarshal()
+	//value must be a pointer
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+		return errors.New("serializer.Decode: must use a pointer value")
+	}
+
+	s := serializer{}
+	return s.decode(rv, parsedJSON)
+}
+
+func (s *serializer) decode(rv reflect.Value, parsedJSON format) error {
+	s.encoded = parsedJSON.Store
+
+	fmt.Println(3)
+	simpleValue := parsedJSON.Data
+
+	if simpleValue != nil {
 		switch rv.Elem().Kind() {
 		case reflect.Bool:
 			rv.Elem().SetBool(simpleValue.(bool))
@@ -292,29 +305,30 @@ func (s *Serializer) Decode(data string, value interface{}) error {
 			rv.Elem().SetFloat(simpleValue.(float64))
 		case reflect.String:
 			rv.Elem().SetString(simpleValue.(string))
+		case reflect.Interface:
+			if simpleValue != nil {
+				rv.Elem().Set(reflect.ValueOf(simpleValue))
+			}
 		default:
 			panic(fmt.Sprintf("unknown kind: %s", rv.Elem().Kind()))
 		}
 		return nil
 	}
 
-	id, ok := parsedJSON[KEY_OBJECT]
-	if ok {
-		idInt, err := strconv.Atoi(strings.TrimLeft(id.(string), ID_PREFIX))
+	fmt.Println(4)
+	id := parsedJSON.Object
+	if id != "" {
+		idInt, err := strconv.Atoi(strings.TrimLeft(id, ID_PREFIX))
 		if err != nil {
 			return err
 		}
-		s.decodeFromStore(idInt, s.encoded[idInt].(map[string]interface{}), rv)
-		return nil
+		return s.decodeFromStore(idInt, s.encoded[idInt], rv)
 	}
 
-	fmt.Println("v, err", parsedJSON, err)
 	return nil
-	//return json.Unmarshal([]byte(data), value)
 }
 
-//todo: i'm sure this function needs to return an error
-func (s *Serializer) decodeFromStore(id int, encoded map[string]interface{}, rv reflect.Value) {
+func (s *serializer) decodeFromStore(id int, encoded StoreObject, rv reflect.Value) error {
 
 	fmt.Println("id, decoded: ", id, s.decoded)
 
@@ -323,27 +337,29 @@ func (s *Serializer) decodeFromStore(id int, encoded map[string]interface{}, rv 
 		fmt.Println("********", decoded.Kind(), rv.Kind())
 		//rv.Set(indirect(decoded))
 		rv.Set(decoded)
-		return
+		return nil
 	}
 
-	_, ok := encoded[KEY_OBJECT_NAME]
-	if ok {
+	if encoded.Properties != nil {
 		fmt.Println("in the thing2", rv, rv.Kind())
-		s.decodeStruct(id, encoded[KEY_OBJECT_PROPERTIES], rv)
-		return
+		s.decodeStruct(id, encoded.Properties, rv)
+		return nil
 	}
 
-	_, ok = encoded[KEY_KEYS]
-	if ok {
-		s.decodeMap(id, encoded[KEY_KEYS], encoded[KEY_ARRAY], rv)
-		return
-	} else {
-		s.decodeArray(id, encoded[KEY_ARRAY], rv)
-		return
+	if encoded.Keys != nil {
+		s.decodeMap(id, encoded.Keys, encoded.Values, rv)
+		return nil
 	}
+
+	if encoded.Values != nil {
+		s.decodeArray(id, encoded.Values, rv)
+		return nil
+	}
+
+	return errors.New("serializer.Decode: wrong format of data")
 }
 
-func (s *Serializer) decodeArray(id int, array interface{}, rv reflect.Value) {
+func (s *serializer) decodeArray(id int, array interface{}, rv reflect.Value) {
 
 	arr := array.([]interface{})
 
@@ -398,9 +414,8 @@ func (s *Serializer) decodeArray(id int, array interface{}, rv reflect.Value) {
 }
 
 //todo: should I handle the case in which the KEY_OBJECT_PROPERTIES don't match the struct passed in? seems yes/. actually just do like the json package does
-func (s *Serializer) decodeStruct(id int, encodedObject interface{}, v reflect.Value) {
+func (s *serializer) decodeStruct(id int, encodedObject interface{}, v reflect.Value) {
 
-	//todo: this only works with ptr value, make sure that is always going to be the case
 	object := encodedObject.(map[string]interface{})
 
 	newV := v
@@ -421,9 +436,8 @@ func (s *Serializer) decodeStruct(id int, encodedObject interface{}, v reflect.V
 	}
 }
 
-func (s *Serializer) decodeMap(id int, keys interface{}, values interface{}, v reflect.Value) {
+func (s *serializer) decodeMap(id int, keys interface{}, values interface{}, v reflect.Value) {
 
-	//todo: this only works with ptr value, make sure that is always going to be the case
 	ks := keys.([]interface{})
 	vs := values.([]interface{})
 
@@ -464,7 +478,7 @@ func (s *Serializer) decodeMap(id int, keys interface{}, values interface{}, v r
 	}
 }
 
-func (s *Serializer) decodeElement(rv reflect.Value, value interface{}) {
+func (s *serializer) decodeElement(rv reflect.Value, value interface{}) {
 	fmt.Println("decodeElement value: ", value)
 
 	potentialID, ok := value.(string)
@@ -474,16 +488,13 @@ func (s *Serializer) decodeElement(rv reflect.Value, value interface{}) {
 		if isStoreID {
 			encoded := s.encoded[id]
 			fmt.Println("decodeElement id, encoded", id, encoded)
-			s.decodeFromStore(id, encoded.(map[string]interface{}), rv)
+			s.decodeFromStore(id, encoded, rv)
 			fmt.Printf("returned %+v, %+v\n", rv.Interface(), rv.Kind())
 			return
 		}
 	}
 
 	fmt.Println("rv kind:::::::::::::::: ", rv, rv.Kind())
-	//for rv.Kind() == reflect.Ptr || rv.Kind() == reflect.Interface {
-	//	rv = rv.Elem()
-	//}
 	rv = indirect(rv)
 	switch rv.Kind() {
 	case reflect.Bool:
@@ -493,17 +504,12 @@ func (s *Serializer) decodeElement(rv reflect.Value, value interface{}) {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		rv.SetUint(uint64(value.(float64)))
 	case reflect.Float32, reflect.Float64:
-		//panic("bob")
-		//todo: change this
 		rv.Set(reflect.ValueOf(value).Convert(rv.Type()))
 	case reflect.String:
 		rv.SetString(value.(string))
-		//todo:
-		//case reflect.Uintptr:
-		//case reflect.Chan:
-		//case reflect.Func:
+	case reflect.Uintptr:
+		rv.Set(reflect.ValueOf(uintptr(value.(float64))))
 	case reflect.Interface:
-		//todo: shouldn't have tehse here?
 		rv.Set(reflect.ValueOf(value))
 	case reflect.Ptr:
 		rv.Set(reflect.ValueOf(value))
@@ -529,7 +535,7 @@ func (s *Serializer) decodeElement(rv reflect.Value, value interface{}) {
 	}
 }
 
-func (s *Serializer) storeID(str string) (int, bool) {
+func (s *serializer) storeID(str string) (int, bool) {
 	if !strings.HasPrefix(str, ID_PREFIX) {
 		return 0, false
 	}
@@ -564,12 +570,12 @@ func setPtr(field reflect.Value, value interface{}) {
 	//todo: other possible kinds
 }
 
-func insert(arr []interface{}, value interface{}, i int) []interface{} {
+func insert(arr []StoreObject, value StoreObject, i int) []StoreObject {
 	if len(arr) > i {
 		arr[i] = value
 		return arr
 	}
-	newArr := make([]interface{}, i+1)
+	newArr := make([]StoreObject, i+1)
 	copy(newArr, arr)
 	newArr[i] = value
 	return newArr

@@ -11,3 +11,6 @@ zenaton.err
 
 # go binary
 zenaton-go
+
+# test coverage file
+*.coverprofile

@@ -1,4 +1,4 @@
-package zenaton
+package serializer_test
 
 import (
 	. "github.com/onsi/ginkgo"
