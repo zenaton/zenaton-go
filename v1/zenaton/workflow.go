@@ -3,6 +3,8 @@ package zenaton
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
 )
 
 //todo: must call NewWorkflow to create this so that we can do validation. I'm not sure how to do that given that we must export fields for the worker library
@@ -226,7 +228,6 @@ func (wf *Workflow) SetData(data interface{}) *Workflow {
 }
 
 func (wf *Workflow) SetDataByEncodedString(encodedData string) error {
-	serializer := &Serializer{}
 	typeHandlerFunc := reflect.TypeOf(wf.handleFunc)
 	if typeHandlerFunc.NumIn() > 0 {
 		data := reflect.New(typeHandlerFunc.In(0)).Interface()
@@ -252,7 +253,7 @@ func (wf *Workflow) GetCustomID() string {
 			in = []reflect.Value{reflect.ValueOf(wf.data)}
 		}
 
-		fmt.Println("reflect.ValueOf(wf.data): ", reflect.ValueOf(wf.data))
+		//fmt.Println("reflect.ValueOf(wf.data): ", reflect.ValueOf(wf.data))
 		values := idValue.Call(in)
 
 		//todo: is it possible that this would be an index out of bounds?

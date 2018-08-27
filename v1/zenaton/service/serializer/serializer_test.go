@@ -9,13 +9,13 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/zenaton/zenaton-go/v1/service/serializer"
 
 	"errors"
 
 	"unsafe"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
 )
 
 var pointed = "v"

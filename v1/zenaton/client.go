@@ -10,6 +10,8 @@ import (
 
 	"errors"
 	"path"
+
+	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
 )
 
 const (
@@ -113,7 +115,6 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 	if data == nil {
 		encodedData = "{}"
 	} else {
-		serializer := &Serializer{}
 		encodedData, err = serializer.Encode(data)
 		if err != nil {
 			panic(err)
@@ -170,7 +171,6 @@ func (c *Client) SendEvent(workflowName, customID, eventName string, eventData i
 	body[ATTR_NAME] = workflowName
 	body[ATTR_ID] = customID
 	body[EVENT_NAME] = eventName
-	serializer := &Serializer{}
 	encodedData, err := serializer.Encode(eventData)
 	if err != nil {
 		panic(err)

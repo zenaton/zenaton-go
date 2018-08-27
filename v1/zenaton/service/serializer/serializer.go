@@ -8,8 +8,6 @@ import (
 	"strconv"
 
 	"strings"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 const (
@@ -28,6 +26,12 @@ type StoreObject struct {
 	Values     []interface{}          `json:"v,omitempty"`
 	Properties map[string]interface{} `json:"p,omitempty"`
 }
+
+// Serializer is just a type that allows you to call Encode and Decode as methods for convenience.
+type Serializer struct{}
+
+func (s *Serializer) Encode(data interface{}) (string, error)     { return Encode(data) }
+func (s *Serializer) Decode(data string, value interface{}) error { return Decode(data, value) }
 
 type serializer struct {
 	encoded  []StoreObject
@@ -103,17 +107,16 @@ func basicType(rv reflect.Value) bool {
 }
 
 func (s *serializer) encodeToStore(object reflect.Value) string {
-	spew.Dump(object)
 	for object.Kind() == reflect.Interface {
 		object = object.Elem()
 	}
-	fmt.Println("kind in encodeToStore: ", object.Kind())
+	//fmt.Println("kind in encodeToStore: ", object.Kind())
 	if object.Kind() == reflect.Ptr {
 		if object.IsNil() {
 			return ""
 		}
 		id := indexOf(s.pointers, object.Pointer())
-		fmt.Println("id: ", id)
+		//fmt.Println("id: ", id)
 		if id != -1 {
 			return storeID(id)
 		}
@@ -137,7 +140,7 @@ func (s *serializer) storeAndEncode(object reflect.Value) string {
 func (s *serializer) encodedObjectByType(object reflect.Value) StoreObject {
 	object = reflect.Indirect(object)
 	kind := object.Kind()
-	fmt.Println("kind in encodedObjectByType: ", kind)
+	//fmt.Println("kind in encodedObjectByType: ", kind)
 	switch kind {
 	case reflect.Struct:
 		return s.encodeStruct(object)
@@ -175,12 +178,12 @@ func (s *serializer) encodeArray(a reflect.Value) StoreObject {
 	var array []interface{}
 	for i := 0; i < a.Len(); i++ {
 		rv := a.Index(i)
-		fmt.Println("rv: ", rv)
+		//fmt.Println("rv: ", rv)
 		for rv.Kind() == reflect.Interface && rv.Elem().Kind() != reflect.Invalid {
 			rv = rv.Elem()
 		}
 		kind := rv.Kind()
-		fmt.Println("kind in encodeArray2::::: ", kind)
+		//fmt.Println("kind in encodeArray2::::: ", kind)
 		if basicType(rv) || kind == reflect.Interface {
 			fmt.Println("basic kind or interface: ", rv.Interface(), rv)
 			array = append(array, rv.Interface())
@@ -204,8 +207,7 @@ func (s *serializer) encodeMap(m reflect.Value) StoreObject {
 		for kv.Kind() == reflect.Interface {
 			kv = kv.Elem()
 		}
-		kind := kv.Kind()
-		fmt.Println("key::::: ", kind)
+		//fmt.Println("key::::: ", kind)
 		if basicType(kv) {
 			keys = append(keys, kv.Interface())
 		} else {
@@ -217,7 +219,7 @@ func (s *serializer) encodeMap(m reflect.Value) StoreObject {
 		for valueValue.Kind() == reflect.Interface {
 			valueValue = valueValue.Elem()
 		}
-		fmt.Println("value::::: ", valueValue.Kind())
+		//fmt.Println("value::::: ", valueValue.Kind())
 		if basicType(valueValue) {
 			values = append(values, valueValue.Interface())
 		} else {
@@ -244,14 +246,14 @@ func (s *serializer) encodeProperties(o reflect.Value) map[string]interface{} {
 	propMap := make(map[string]interface{})
 	for i := 0; i < o.NumField(); i++ {
 		key := dataT.Field(i).Name
-		fmt.Println("1key: ", key, "kind: ", o.Field(i).Kind())
+		//fmt.Println("1key: ", key, "kind: ", o.Field(i).Kind())
 		if basicType(o.Field(i)) {
 			if o.Field(i).CanInterface() {
 				propMap[key] = o.Field(i).Interface()
 			}
 			continue
 		}
-		fmt.Println("")
+		//fmt.Println("")
 		propMap[key] = s.encodeToStore(o.Field(i))
 	}
 	return propMap
@@ -259,7 +261,7 @@ func (s *serializer) encodeProperties(o reflect.Value) map[string]interface{} {
 
 func indexOf(slice []uintptr, item uintptr) int {
 
-	fmt.Println("pointers: ", slice, "item: ", item)
+	//fmt.Println("pointers: ", slice, "item: ", item)
 	for i := range slice {
 		if slice[i] == item {
 			return i
@@ -290,7 +292,6 @@ func Decode(data string, value interface{}) error {
 func (s *serializer) decode(rv reflect.Value, parsedJSON format) error {
 	s.encoded = parsedJSON.Store
 
-	fmt.Println(3)
 	simpleValue := parsedJSON.Data
 
 	if simpleValue != nil {
@@ -315,7 +316,7 @@ func (s *serializer) decode(rv reflect.Value, parsedJSON format) error {
 		return nil
 	}
 
-	fmt.Println(4)
+	//fmt.Println(4)
 	id := parsedJSON.Object
 	if id != "" {
 		idInt, err := strconv.Atoi(strings.TrimLeft(id, ID_PREFIX))
@@ -330,18 +331,18 @@ func (s *serializer) decode(rv reflect.Value, parsedJSON format) error {
 
 func (s *serializer) decodeFromStore(id int, encoded StoreObject, rv reflect.Value) error {
 
-	fmt.Println("id, decoded: ", id, s.decoded)
+	//fmt.Println("id, decoded: ", id, s.decoded)
 
 	if len(s.decoded) > id {
 		decoded := s.decoded[id]
-		fmt.Println("********", decoded.Kind(), rv.Kind())
+		//fmt.Println("********", decoded.Kind(), rv.Kind())
 		//rv.Set(indirect(decoded))
 		rv.Set(decoded)
 		return nil
 	}
 
 	if encoded.Properties != nil {
-		fmt.Println("in the thing2", rv, rv.Kind())
+		//fmt.Println("in the thing2", rv, rv.Kind())
 		s.decodeStruct(id, encoded.Properties, rv)
 		return nil
 	}
@@ -368,13 +369,13 @@ func (s *serializer) decodeArray(id int, array interface{}, rv reflect.Value) {
 	case reflect.Interface:
 		var newSlice []interface{}
 		newRV = reflect.ValueOf(&newSlice)
-		fmt.Println("interface(((((((((((((((((((((")
+		//fmt.Println("interface(((((((((((((((((((((")
 	default:
-		fmt.Println("default(((((((((((((((((((((")
+		//fmt.Println("default(((((((((((((((((((((")
 		newRV = rv
 	}
 
-	fmt.Println("in the thing", rv, rv.Kind())
+	//fmt.Println("in the thing", rv, rv.Kind())
 	s.decoded = insertRV(s.decoded, newRV, id)
 	newRV = indirect(newRV)
 
@@ -424,8 +425,8 @@ func (s *serializer) decodeStruct(id int, encodedObject interface{}, v reflect.V
 
 	for key, value := range object {
 		field := indirect(newV).FieldByName(key)
-		fmt.Println("type of field: ", field)
-		fmt.Println("in the thing", field, field.Kind())
+		//fmt.Println("type of field: ", field)
+		//fmt.Println("in the thing", field, field.Kind())
 		s.decodeElement(field, value)
 	}
 
@@ -446,13 +447,13 @@ func (s *serializer) decodeMap(id int, keys interface{}, values interface{}, v r
 	case reflect.Interface:
 		newMap := make(map[interface{}]interface{})
 		newV = reflect.ValueOf(&newMap)
-		fmt.Println("interface(((((((((((((((((((((")
+		//fmt.Println("interface(((((((((((((((((((((")
 	default:
-		fmt.Println("default(((((((((((((((((((((")
+		//fmt.Println("default(((((((((((((((((((((")
 		newV = v
 	}
 
-	fmt.Println("the thing:::::::::: ", newV, newV.Kind())
+	//fmt.Println("the thing:::::::::: ", newV, newV.Kind())
 	s.decoded = append(s.decoded, newV)
 	newV = indirect(newV)
 	if newV.IsNil() {
@@ -462,7 +463,7 @@ func (s *serializer) decodeMap(id int, keys interface{}, values interface{}, v r
 	for i, k := range ks {
 		v := vs[i]
 
-		fmt.Println("newV.Type()", newV.Type())
+		//fmt.Println("newV.Type()", newV.Type())
 
 		newKey := reflect.New(newV.Type().Key()).Elem()
 		newValue := reflect.New(newV.Type().Elem()).Elem()
@@ -479,22 +480,22 @@ func (s *serializer) decodeMap(id int, keys interface{}, values interface{}, v r
 }
 
 func (s *serializer) decodeElement(rv reflect.Value, value interface{}) {
-	fmt.Println("decodeElement value: ", value)
+	//fmt.Println("decodeElement value: ", value)
 
 	potentialID, ok := value.(string)
-	fmt.Println("str: ", value)
+	//fmt.Println("str: ", value)
 	if ok {
 		id, isStoreID := s.storeID(potentialID)
 		if isStoreID {
 			encoded := s.encoded[id]
-			fmt.Println("decodeElement id, encoded", id, encoded)
+			//fmt.Println("decodeElement id, encoded", id, encoded)
 			s.decodeFromStore(id, encoded, rv)
-			fmt.Printf("returned %+v, %+v\n", rv.Interface(), rv.Kind())
+			//fmt.Printf("returned %+v, %+v\n", rv.Interface(), rv.Kind())
 			return
 		}
 	}
 
-	fmt.Println("rv kind:::::::::::::::: ", rv, rv.Kind())
+	//fmt.Println("rv kind:::::::::::::::: ", rv, rv.Kind())
 	rv = indirect(rv)
 	switch rv.Kind() {
 	case reflect.Bool:

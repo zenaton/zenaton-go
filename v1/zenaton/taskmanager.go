@@ -1,6 +1,9 @@
 package zenaton
 
-import "github.com/zenaton/examples-go/idmax"
+import (
+	"github.com/zenaton/examples-go/idmax"
+	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
+)
 
 var taskManagerInstance *TaskManager
 
@@ -35,7 +38,6 @@ func (tm *TaskManager) GetTask(name, encodedData string) *Task {
 	// get task class
 	task := tm.GetClass(name)
 	// unserialize data
-	serializer := &Serializer{}
 
 	var data idmax.IDmax
 	err := serializer.Decode(encodedData, &data)

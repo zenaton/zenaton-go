@@ -1,11 +1,15 @@
 package zenaton
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
+)
 
 type Service struct {
+	Serializer      *serializer.Serializer
 	Client          *Client
 	Engine          *Engine
-	Serializer      *Serializer
 	WorkflowManager *WorkflowManager
 	TaskManager     *TaskManager
 	Errors          Errors
@@ -21,7 +25,7 @@ func NewService() *Service {
 	return &Service{
 		Client:          NewClient(true),
 		Engine:          NewEngine(),
-		Serializer:      &Serializer{},
+		Serializer:      &serializer.Serializer{},
 		WorkflowManager: NewWorkflowManager(),
 		TaskManager:     NewTaskManager(),
 		Errors: Errors{

@@ -5,16 +5,19 @@ import "reflect"
 type Task struct {
 	name string
 	//todo: would be nice if the handle func could take many arguments, instead of just one. would have to think how that would be done (maybe pass in argments into execute?)
-	handleFunc interface{}
-	data       interface{}
-	id         interface{}
+	handleFunc        interface{}
+	data              interface{}
+	id                interface{}
+	MaxProcessingTime func() int64
 }
 
 type TaskParams struct {
 	Name       string
 	HandleFunc interface{}
-	Data       interface{}
-	ID         interface{}
+	//MaxProcessingTime is an optional function that sets the maximum allowed processing time (in seconds) for the task
+	MaxProcessingTime func() int64
+	Data              interface{}
+	ID                interface{}
 }
 
 func NewTask(params TaskParams) *Task {
