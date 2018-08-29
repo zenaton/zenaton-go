@@ -15,7 +15,8 @@ type Workflow struct {
 	// must be Exported for worker library
 	OnEvent func(string, interface{}) // todo: have reflect checks on this input type and the data type on Send()
 	//todo: in Client.js it says that ID could either be a function or a field
-	id        interface{}
+	//todo: ask gilles why id is a function?
+	id        string
 	canonical string
 	//todo: what to do with these?
 	OnStart               func(*Task)
@@ -48,7 +49,6 @@ func NewWorkflow(params WorkflowParams) *Workflow {
 		name:                  params.Name,
 		handleFunc:            params.HandleFunc,
 		OnEvent:               params.OnEvent,
-		id:                    params.ID,
 		OnStart:               params.OnStart,
 		OnSuccess:             params.OnSuccess,
 		OnFailure:             params.OnFailure,
@@ -58,6 +58,23 @@ func NewWorkflow(params WorkflowParams) *Workflow {
 
 	workflowManager := NewWorkflowManager()
 	workflowManager.setClass(params.Name, workflow)
+
+	//todo: add this validation to validateWorkflowParams
+	if params.ID != nil {
+		idType := reflect.TypeOf(params.ID)
+		idValue := reflect.ValueOf(params.ID)
+		var in []reflect.Value
+		if idType.NumIn() > 0 {
+			if params.Data == nil {
+				panic(fmt.Sprint("workflow: ", params.Name, " has an ID function that specifies an input, but no Data was set on workflow params"))
+			}
+			in = []reflect.Value{reflect.ValueOf(params.Data)}
+		}
+
+		values := idValue.Call(in)
+
+		workflow.id = values[0].String()
+	}
 
 	return workflow
 }
@@ -220,7 +237,7 @@ func (wf *Workflow) GetData() interface{} {
 
 func (wf *Workflow) SetData(data interface{}) *Workflow {
 	validateData(wf.handleFunc, data)
-	if wf.id != nil {
+	if wf.id != "" {
 		validateData(wf.id, data)
 	}
 	wf.data = data
@@ -244,22 +261,7 @@ func (wf *Workflow) SetDataByEncodedString(encodedData string) error {
 }
 
 func (wf *Workflow) GetCustomID() string {
-	var id string
-	if wf.id != nil {
-		idType := reflect.TypeOf(wf.id)
-		idValue := reflect.ValueOf(wf.id)
-		var in []reflect.Value
-		if idType.NumIn() > 0 {
-			in = []reflect.Value{reflect.ValueOf(wf.data)}
-		}
-
-		//fmt.Println("reflect.ValueOf(wf.data): ", reflect.ValueOf(wf.data))
-		values := idValue.Call(in)
-
-		//todo: is it possible that this would be an index out of bounds?
-		id = values[0].String()
-	}
-	return id
+	return wf.id
 }
 
 func (wf *Workflow) WhereID(id string) *Builder {

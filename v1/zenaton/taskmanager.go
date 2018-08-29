@@ -1,7 +1,8 @@
 package zenaton
 
 import (
-	"github.com/zenaton/examples-go/idmax"
+	"reflect"
+
 	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
 )
 
@@ -39,13 +40,19 @@ func (tm *TaskManager) GetTask(name, encodedData string) *Task {
 	task := tm.GetClass(name)
 	// unserialize data
 
-	var data idmax.IDmax
-	err := serializer.Decode(encodedData, &data)
-	if err != nil {
-		panic(err)
+	typeHandlerFunc := reflect.TypeOf(task.handleFunc)
+	if typeHandlerFunc.NumIn() > 0 {
+		data := reflect.New(typeHandlerFunc.In(0)).Interface()
+		err := serializer.Decode(encodedData, data)
+		if err != nil {
+			panic(err)
+		}
+
+		task.data = reflect.ValueOf(data).Elem().Interface()
+	} else {
+		task.data = nil
 	}
 
-	task.data = data
 	//todo: what is this:?
 	//// do not use construct function to set data
 	//taskClass._useInit = false

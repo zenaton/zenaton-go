@@ -11,6 +11,8 @@ import (
 	"errors"
 	"path"
 
+	"strings"
+
 	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
 )
 
@@ -123,6 +125,7 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 
 	body[ATTR_DATA] = encodedData
 	body[ATTR_ID] = customID
+	fmt.Println("workflow custom id: ", customID)
 
 	resp, err := Post(c.getInstanceWorkerUrl(""), body)
 	if err != nil {
@@ -134,7 +137,10 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("respBody: ", string(respBody))
+	//todo: this is ugly
+	if strings.HasPrefix(string(respBody), `{"error":`) {
+		panic(string(respBody))
+	}
 	//todo: fix this
 	return nil
 }
@@ -177,6 +183,8 @@ func (c *Client) SendEvent(workflowName, customID, eventName string, eventData i
 	}
 
 	body[EVENT_INPUT] = encodedData
+
+	fmt.Println("sendEvent body: ", body)
 	Post(url, body)
 }
 

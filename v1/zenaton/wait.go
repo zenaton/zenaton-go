@@ -22,6 +22,7 @@ var waitTask = &Wait{
 }
 
 type Wait struct {
+	data     interface{}
 	task     *Task
 	event    string
 	buffer   []duration
@@ -30,18 +31,13 @@ type Wait struct {
 	nowFunc  func() time.Time
 }
 
-type duration struct {
-	method string
-	value  interface{}
-}
-
 func NewWait() *Wait {
 	return waitTask
 }
 
-func (w *Wait) FakeNow(nowFunc func() time.Time) *Wait {
-	w.nowFunc = nowFunc
-	return w
+type duration struct {
+	method string
+	value  interface{}
 }
 
 func (w *Wait) WithEvent(event string) *Wait {
@@ -375,3 +371,12 @@ func (w *Wait) GetData() interface{} {
 func (w *Wait) Execute() (interface{}, error) {
 	return w.task.Execute()
 }
+
+//todo:
+//func (w *Wait) Execute() (string, interface{}, error) {
+//	_, err := w.task.Execute()
+//	if err != nil {
+//		return nil, err
+//	}
+//	return w.event, w.data, nil
+//}

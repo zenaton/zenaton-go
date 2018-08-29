@@ -66,7 +66,7 @@ func (s *serializer) encode(rv reflect.Value, data interface{}) (string, error) 
 
 	if reflect.TypeOf(data) == nil {
 		//special case, as the json marshal would normally remove the "d". but here we want it to show that the data is nil and not an empty string
-		return `{"d":null,"s":[]}`, nil
+		return `{}`, nil
 	} else if basicType(rv) {
 		value.Data = data
 	} else {
