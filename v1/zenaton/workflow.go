@@ -19,11 +19,10 @@ type Workflow struct {
 	id        string
 	canonical string
 	//todo: what to do with these?
-	OnStart               func(*Task)
-	OnSuccess             func(*Task, interface{})
-	OnFailure             func(*Task, error)
-	OnTimeout             func(*Task)
-	shouldExecuteNextTask bool
+	OnStart   func(*Task)
+	OnSuccess func(*Task, interface{})
+	OnFailure func(*Task, error)
+	OnTimeout func(*Task)
 }
 
 type WorkflowParams struct {
@@ -45,15 +44,14 @@ func NewWorkflow(params WorkflowParams) *Workflow {
 	validateWorkflowParams(params)
 
 	workflow := &Workflow{
-		data:                  params.Data,
-		name:                  params.Name,
-		handleFunc:            params.HandleFunc,
-		OnEvent:               params.OnEvent,
-		OnStart:               params.OnStart,
-		OnSuccess:             params.OnSuccess,
-		OnFailure:             params.OnFailure,
-		OnTimeout:             params.OnTimeout,
-		shouldExecuteNextTask: true,
+		data:       params.Data,
+		name:       params.Name,
+		handleFunc: params.HandleFunc,
+		OnEvent:    params.OnEvent,
+		OnStart:    params.OnStart,
+		OnSuccess:  params.OnSuccess,
+		OnFailure:  params.OnFailure,
+		OnTimeout:  params.OnTimeout,
 	}
 
 	workflowManager := NewWorkflowManager()

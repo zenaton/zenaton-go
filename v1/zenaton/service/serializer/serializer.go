@@ -46,18 +46,21 @@ type Object struct {
 
 func Encode(data interface{}) (string, error) {
 
-	rv := reflect.ValueOf(data)
-	kind := rv.Kind()
-	isValid := validType(kind)
-	if !isValid {
-		return "", errors.New(fmt.Sprintf("cannot encode data of kind: %s", kind.String()))
-	}
+	bytes, err := json.Marshal(data)
+	return string(bytes), err
 
-	s := serializer{}
-	s.encoded = []StoreObject{}
-	s.pointers = []uintptr{}
+	//rv := reflect.ValueOf(data)
+	//kind := rv.Kind()
+	//isValid := validType(kind)
+	//if !isValid {
+	//	return "", errors.New(fmt.Sprintf("cannot encode data of kind: %s", kind.String()))
+	//}
+	//
+	//s := serializer{}
+	//s.encoded = []StoreObject{}
+	//s.pointers = []uintptr{}
 
-	return s.encode(rv, data)
+	//return s.encode(rv, data)
 }
 
 func (s *serializer) encode(rv reflect.Value, data interface{}) (string, error) {
@@ -272,21 +275,23 @@ func indexOf(slice []uintptr, item uintptr) int {
 
 func Decode(data string, value interface{}) error {
 
-	var parsedJSON format
-	err := json.Unmarshal([]byte(data), &parsedJSON)
-	if err != nil {
-		return err
-	}
+	return json.Unmarshal([]byte(data), value)
 
-	rv := reflect.ValueOf(value)
-
-	//value must be a pointer
-	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return errors.New("serializer.Decode: must use a pointer value")
-	}
-
-	s := serializer{}
-	return s.decode(rv, parsedJSON)
+	//var parsedJSON format
+	//err := json.Unmarshal([]byte(data), &parsedJSON)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//rv := reflect.ValueOf(value)
+	//
+	////value must be a pointer
+	//if rv.Kind() != reflect.Ptr || rv.IsNil() {
+	//	return errors.New("serializer.Decode: must use a pointer value")
+	//}
+	//
+	//s := serializer{}
+	//return s.decode(rv, parsedJSON)
 }
 
 func (s *serializer) decode(rv reflect.Value, parsedJSON format) error {
