@@ -3,15 +3,20 @@ package zenaton
 import (
 	"errors"
 
+	"github.com/zenaton/zenaton-go/v1/zenaton/client"
+	"github.com/zenaton/zenaton-go/v1/zenaton/engine"
+	"github.com/zenaton/zenaton-go/v1/zenaton/interfaces"
 	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
+	"github.com/zenaton/zenaton-go/v1/zenaton/task"
+	"github.com/zenaton/zenaton-go/v1/zenaton/workflow"
 )
 
 type Service struct {
 	Serializer      *serializer.Serializer
-	Client          *Client
-	Engine          *Engine
-	WorkflowManager *WorkflowManager
-	TaskManager     *TaskManager
+	Client          *client.Client
+	Engine          *engine.Engine
+	WorkflowManager *workflow.WorkflowManager
+	TaskManager     *task.TaskManager
 	Errors          Errors
 }
 
@@ -23,13 +28,23 @@ type Errors struct {
 
 func NewService() *Service {
 	return &Service{
-		Client:          NewClient(true),
-		Engine:          NewEngine(),
+		Client:          client.NewClient(true),
+		Engine:          engine.NewEngine(),
 		Serializer:      &serializer.Serializer{},
-		WorkflowManager: NewWorkflowManager(),
-		TaskManager:     NewTaskManager(),
+		WorkflowManager: workflow.NewWorkflowManager(),
+		TaskManager:     task.NewTaskManager(),
 		Errors: Errors{
 			ScheduledBoxError: ScheduledBoxError,
 		},
 	}
 }
+
+func InitClient(appID, apiToken, appEnv string) {
+	client.InitClient(appID, apiToken, appEnv)
+}
+
+type Workflow = workflow.Workflow
+type Task = task.Task
+type Wait = task.WaitTask
+type Job = interfaces.Job
+type Processor = engine.Processor

@@ -1,4 +1,4 @@
-package zenaton
+package client
 
 import (
 	"fmt"
@@ -13,6 +13,7 @@ import (
 
 	"strings"
 
+	"github.com/zenaton/zenaton-go/v1/zenaton/service"
 	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
 )
 
@@ -70,7 +71,7 @@ func InitClient(appIDx, apiTokenx, appEnvx string) {
 }
 
 func NewClient(worker bool) *Client {
-	if instance != nil {
+	if clientInstance != nil {
 		if !worker && (appID == "" || apiToken == "" || appEnv == "") {
 			//todo: produce error?
 			panic("Please initialize your Zenaton instance with your credentials")
@@ -109,6 +110,9 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 	body := make(map[string]interface{})
 	body[ATTR_PROG] = PROG
 	body[ATTR_CANONICAL] = flowCanonical
+	if flowCanonical == "" {
+		body[ATTR_CANONICAL] = nil
+	}
 	body[ATTR_NAME] = flowName
 
 	var encodedData string
@@ -125,9 +129,8 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 
 	body[ATTR_DATA] = encodedData
 	body[ATTR_ID] = customID
-	fmt.Println("workflow custom id: ", customID)
 
-	resp, err := Post(c.getInstanceWorkerUrl(""), body)
+	resp, err := service.Post(c.getInstanceWorkerUrl(""), body)
 	if err != nil {
 		panic(err)
 	}
@@ -145,7 +148,53 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 	return nil
 }
 
-func (c *Client) killWorkflow(workflowName, customId string) error {
+//todo: figure out how to handle errors
+func (c *Client) StartWorkflow2(flowName, flowCanonical, customID string, data interface{}) error {
+
+	if len(customID) >= MAX_ID_SIZE {
+		//todo: handle this error better
+		fmt.Println(`Provided id must not exceed ` + strconv.Itoa(MAX_ID_SIZE) + ` bytes`)
+	}
+
+	body := make(map[string]interface{})
+	body[ATTR_PROG] = PROG
+	body[ATTR_CANONICAL] = flowCanonical
+	body[ATTR_NAME] = flowName
+
+	var encodedData string
+	var err error
+
+	if data == nil {
+		encodedData = "{}"
+	} else {
+		encodedData, err = serializer.Encode(data)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	body[ATTR_DATA] = encodedData
+	body[ATTR_ID] = customID
+
+	resp, err := service.Post(c.getInstanceWorkerUrl(""), body)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+	//todo: panic? or return error?
+	if err != nil {
+		panic(err)
+	}
+	//todo: this is ugly
+	if strings.HasPrefix(string(respBody), `{"error":`) {
+		panic(string(respBody))
+	}
+	//todo: fix this
+	return nil
+}
+
+func (c *Client) KillWorkflow(workflowName, customId string) error {
 	err := c.updateInstance(workflowName, customId, WORKFLOW_KILL)
 	if err != nil {
 		return errors.New(fmt.Sprint("unable to kill workflow: ", workflowName, " error: ", err.Error()))
@@ -153,7 +202,7 @@ func (c *Client) killWorkflow(workflowName, customId string) error {
 	return nil
 }
 
-func (c *Client) pauseWorkflow(workflowName, customId string) error {
+func (c *Client) PauseWorkflow(workflowName, customId string) error {
 	err := c.updateInstance(workflowName, customId, WORKFLOW_PAUSE)
 	if err != nil {
 		return errors.New(fmt.Sprint("unable to pause workflow: ", workflowName, " error: ", err.Error()))
@@ -161,7 +210,7 @@ func (c *Client) pauseWorkflow(workflowName, customId string) error {
 	return nil
 }
 
-func (c *Client) resumeWorkflow(workflowName, customId string) error {
+func (c *Client) ResumeWorkflow(workflowName, customId string) error {
 	err := c.updateInstance(workflowName, customId, WORKFLOW_RUN)
 	if err != nil {
 		return errors.New(fmt.Sprint("unable to resume workflow: ", workflowName, " error: ", err.Error()))
@@ -185,7 +234,7 @@ func (c *Client) SendEvent(workflowName, customID, eventName string, eventData i
 	body[EVENT_INPUT] = encodedData
 
 	fmt.Println("sendEvent body: ", body)
-	Post(url, body)
+	service.Post(url, body)
 }
 
 func (c *Client) updateInstance(workflowName, customId, mode string) error {
@@ -194,7 +243,7 @@ func (c *Client) updateInstance(workflowName, customId, mode string) error {
 	body[ATTR_PROG] = PROG
 	body[ATTR_NAME] = workflowName
 	body[ATTR_MODE] = mode
-	_, err := Put(c.getInstanceWorkerUrl(params), body)
+	_, err := service.Put(c.getInstanceWorkerUrl(params), body)
 	return err
 }
 

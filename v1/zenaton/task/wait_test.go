@@ -1,4 +1,4 @@
-package zenaton
+package task
 
 import (
 	"fmt"
@@ -7,12 +7,12 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = FDescribe("Wait", func() {
+var _ = FDescribe("WaitTask", func() {
 
 	Describe("WithTimestamp", func() {
 		Context("Timezone", func() {
 			It("sets the timezone", func() {
-				w := NewWait()
+				w := Wait()
 				err := w.Timezone("invalidTimezone")
 				Expect(err.Error()).To(ContainSubstring("cannot find invalidTimezone"))
 
@@ -25,8 +25,8 @@ var _ = FDescribe("Wait", func() {
 
 	Context("without timezones", func() {
 		Context("when applying duration methods", func() {
-			It("should Wait for the specified time", func() {
-				w := NewWait().Seconds(1)
+			It("should WaitTask for the specified time", func() {
+				w := Wait().Seconds(1)
 				a, b, err := w.GetTimestampOrDuration()
 				Expect(err).NotTo(HaveOccurred())
 				fmt.Println("a, b", a, b)

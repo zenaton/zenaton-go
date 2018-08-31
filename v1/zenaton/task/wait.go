@@ -1,4 +1,4 @@
-package zenaton
+package task
 
 import (
 	"errors"
@@ -14,25 +14,28 @@ const (
 	MODE_TIMESTAMP = "TIMESTAMP"
 )
 
-var waitTask = &Wait{
-	task: NewTask(TaskParams{
-		Name:       "_Wait",
-		HandleFunc: func() {},
-	}),
-}
-
-type Wait struct {
-	data     interface{}
+type WaitTask struct {
 	task     *Task
 	event    string
 	buffer   []duration
 	mode     string
 	timezone *time.Location
-	nowFunc  func() time.Time
 }
 
-func NewWait() *Wait {
-	return waitTask
+type _Wait struct{}
+
+func (wt *_Wait) Handle() {}
+func Wait() *WaitTask {
+	waitTask := New(&_Wait{})
+	wait := WaitTask{
+		task: waitTask,
+	}
+	return &wait
+}
+
+func (w *WaitTask) ForEvent(eventName string) *WaitTask {
+	w.event = eventName
+	return w
 }
 
 type duration struct {
@@ -40,16 +43,16 @@ type duration struct {
 	value  interface{}
 }
 
-func (w *Wait) WithEvent(event string) *Wait {
+func (w *WaitTask) WithEvent(event string) *WaitTask {
 	w.event = event
 	return w
 }
 
-func (w *Wait) Event() string {
+func (w *WaitTask) Event() string {
 	return w.event
 }
 
-func (w *Wait) Seconds(value int64) *Wait {
+func (w *WaitTask) Seconds(value int64) *WaitTask {
 	w.push(duration{
 		method: "seconds",
 		value:  value,
@@ -58,7 +61,7 @@ func (w *Wait) Seconds(value int64) *Wait {
 	return w
 }
 
-func (w *Wait) Minutes(value int64) *Wait {
+func (w *WaitTask) Minutes(value int64) *WaitTask {
 	w.push(duration{
 		method: "minutes",
 		value:  value,
@@ -67,7 +70,7 @@ func (w *Wait) Minutes(value int64) *Wait {
 	return w
 }
 
-func (w *Wait) Hours(value int64) *Wait {
+func (w *WaitTask) Hours(value int64) *WaitTask {
 	w.push(duration{
 		method: "hours",
 		value:  value,
@@ -76,7 +79,7 @@ func (w *Wait) Hours(value int64) *Wait {
 	return w
 }
 
-func (w *Wait) Days(value int64) *Wait {
+func (w *WaitTask) Days(value int64) *WaitTask {
 	w.push(duration{
 		method: "days",
 		value:  value,
@@ -85,7 +88,7 @@ func (w *Wait) Days(value int64) *Wait {
 	return w
 }
 
-func (w *Wait) Weeks(value int64) *Wait {
+func (w *WaitTask) Weeks(value int64) *WaitTask {
 	w.push(duration{
 		method: "weeks",
 		value:  value,
@@ -94,7 +97,7 @@ func (w *Wait) Weeks(value int64) *Wait {
 	return w
 }
 
-func (w *Wait) Months(value int64) *Wait {
+func (w *WaitTask) Months(value int64) *WaitTask {
 	w.push(duration{
 		method: "months",
 		value:  value,
@@ -103,7 +106,7 @@ func (w *Wait) Months(value int64) *Wait {
 	return w
 }
 
-func (w *Wait) Years(value int64) *Wait {
+func (w *WaitTask) Years(value int64) *WaitTask {
 	w.push(duration{
 		method: "years",
 		value:  value,
@@ -112,7 +115,7 @@ func (w *Wait) Years(value int64) *Wait {
 	return w
 }
 
-func (w *Wait) Timezone(timezone string) error {
+func (w *WaitTask) Timezone(timezone string) error {
 	tz, err := time.LoadLocation(timezone)
 	if err != nil {
 		return err
@@ -121,61 +124,61 @@ func (w *Wait) Timezone(timezone string) error {
 	return nil
 }
 
-func (w *Wait) Timestamp(value int64) *Wait {
+func (w *WaitTask) Timestamp(value int64) *WaitTask {
 	w.push(duration{"timestamp", value})
 	return w
 }
 
-func (w *Wait) At(value string) *Wait {
+func (w *WaitTask) At(value string) *WaitTask {
 	w.push(duration{"at", value})
 	return w
 }
 
-func (w *Wait) DayOfMonth(value string) *Wait {
+func (w *WaitTask) DayOfMonth(value string) *WaitTask {
 	w.push(duration{"dayOfMonth", value})
 	return w
 }
 
-func (w *Wait) Monday(value int) *Wait {
+func (w *WaitTask) Monday(value int) *WaitTask {
 	w.push(duration{"Monday", value})
 	return w
 }
 
-func (w *Wait) Tuesday(value int) *Wait {
+func (w *WaitTask) Tuesday(value int) *WaitTask {
 	w.push(duration{"Tuesday", value})
 	return w
 }
 
-func (w *Wait) Wednesday(value int) *Wait {
+func (w *WaitTask) Wednesday(value int) *WaitTask {
 	w.push(duration{"Wednesday", value})
 	return w
 }
 
-func (w *Wait) Thursday(value int) *Wait {
+func (w *WaitTask) Thursday(value int) *WaitTask {
 	w.push(duration{"Thursday", value})
 	return w
 }
 
-func (w *Wait) Friday(value int) *Wait {
+func (w *WaitTask) Friday(value int) *WaitTask {
 	w.push(duration{"Friday", value})
 	return w
 }
 
-func (w *Wait) Saturday(value int) *Wait {
+func (w *WaitTask) Saturday(value int) *WaitTask {
 	w.push(duration{"Saturday", value})
 	return w
 }
 
-func (w *Wait) Sunday(value int) *Wait {
+func (w *WaitTask) Sunday(value int) *WaitTask {
 	w.push(duration{"Sunday", value})
 	return w
 }
 
-func (w *Wait) push(data duration) {
+func (w *WaitTask) push(data duration) {
 	w.buffer = append(w.buffer, data)
 }
 
-func (w *Wait) initNowThen() (time.Time, time.Time) {
+func (w *WaitTask) initNowThen() (time.Time, time.Time) {
 	// get set or current time zone
 
 	var tz *time.Location
@@ -189,7 +192,7 @@ func (w *Wait) initNowThen() (time.Time, time.Time) {
 }
 
 //todo: would be nice to make this unexported
-func (w *Wait) GetTimestampOrDuration() (int64, float64, error) {
+func (w *WaitTask) GetTimestampOrDuration() (int64, float64, error) {
 
 	now, then := w.initNowThen()
 
@@ -213,7 +216,7 @@ func (w *Wait) GetTimestampOrDuration() (int64, float64, error) {
 	}
 }
 
-func (w *Wait) apply(method string, value interface{}, now, then time.Time) (time.Time, error) {
+func (w *WaitTask) apply(method string, value interface{}, now, then time.Time) (time.Time, error) {
 	switch method {
 	case "timestamp":
 		return w._timestamp(value.(int64)), nil
@@ -240,13 +243,13 @@ func (w *Wait) apply(method string, value interface{}, now, then time.Time) (tim
 	}
 }
 
-func (w *Wait) _timestamp(timestamp int64) time.Time {
+func (w *WaitTask) _timestamp(timestamp int64) time.Time {
 	w._setMode(MODE_TIMESTAMP)
 
 	return time.Unix(timestamp, 0)
 }
 
-func (w *Wait) _at(t string, now, then time.Time) (time.Time, error) {
+func (w *WaitTask) _at(t string, now, then time.Time) (time.Time, error) {
 	w._setMode(MODE_AT)
 
 	segments := strings.Split(t, ":")
@@ -290,7 +293,7 @@ func (w *Wait) _at(t string, now, then time.Time) (time.Time, error) {
 	return then, nil
 }
 
-func (w *Wait) _dayOfMonth(day int, now, then time.Time) time.Time {
+func (w *WaitTask) _dayOfMonth(day int, now, then time.Time) time.Time {
 	w._setMode(MODE_MONTH_DAY)
 
 	then = time.Date(now.Year(), now.Month(), day, now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), w.timezone)
@@ -302,7 +305,7 @@ func (w *Wait) _dayOfMonth(day int, now, then time.Time) time.Time {
 	return then
 }
 
-func (w *Wait) _weekDay(n int, day int, then time.Time) time.Time {
+func (w *WaitTask) _weekDay(n int, day int, then time.Time) time.Time {
 	w._setMode(MODE_WEEK_DAY)
 
 	d := int(then.Weekday())
@@ -317,14 +320,14 @@ func (w *Wait) _weekDay(n int, day int, then time.Time) time.Time {
 	return then
 }
 
-func (w *Wait) _setMode(mode string) error {
+func (w *WaitTask) _setMode(mode string) error {
 	// can not apply twice the same method
 	if mode == w.mode {
-		return errors.New("incompatible definition in Wait methods")
+		return errors.New("incompatible definition in WaitTask methods")
 	}
 	// timestamp can only be used alone
 	if (w.mode != "" && mode == MODE_TIMESTAMP) || w.mode == MODE_TIMESTAMP {
-		return errors.New("incompatible definition in Wait methods")
+		return errors.New("incompatible definition in WaitTask methods")
 	}
 
 	// other mode takes precedence to MODE_AT
@@ -335,7 +338,7 @@ func (w *Wait) _setMode(mode string) error {
 	return nil
 }
 
-func (w *Wait) _applyDuration(method string, value int64, then time.Time) (time.Time, error) {
+func (w *WaitTask) _applyDuration(method string, value int64, then time.Time) (time.Time, error) {
 	switch method {
 	case "seconds":
 		return then.Add(time.Duration(value) * time.Second), nil
@@ -356,27 +359,22 @@ func (w *Wait) _applyDuration(method string, value int64, then time.Time) (time.
 	}
 }
 
-func (w *Wait) Handle() (interface{}, error) {
+func (w *WaitTask) Handle() (interface{}, error) {
 	return w.task.Handle()
 }
 
-func (w *Wait) GetName() string {
+func (w *WaitTask) Async() error {
+	return w.task.Async()
+}
+
+func (w *WaitTask) GetName() string {
 	return w.task.GetName()
 }
 
-func (w *Wait) GetData() interface{} {
+func (w *WaitTask) GetData() interface{} {
 	return w.task.GetData()
 }
 
-func (w *Wait) Execute() (interface{}, error) {
+func (w *WaitTask) Execute() (interface{}, error) {
 	return w.task.Execute()
 }
-
-//todo:
-//func (w *Wait) Execute() (string, interface{}, error) {
-//	_, err := w.task.Execute()
-//	if err != nil {
-//		return nil, err
-//	}
-//	return w.event, w.data, nil
-//}

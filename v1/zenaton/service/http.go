@@ -1,4 +1,4 @@
-package zenaton
+package service
 
 import (
 	"bytes"

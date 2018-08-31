@@ -1,10 +1,6 @@
-package zenaton
+package task
 
-import (
-	"reflect"
-
-	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
-)
+import "github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
 
 var taskManagerInstance *TaskManager
 
@@ -24,11 +20,11 @@ func NewTaskManager() *TaskManager {
 
 func (tm *TaskManager) setClass(name string, task *Task) {
 	// check that this task does not exist yet
-	if tm.GetClass(name) != nil {
-		panic(`"` + name + `" task can not be defined twice`)
+	//todo: is this right?
+	if tm.GetClass(name) == nil {
+		tm.tasks[name] = task
 	}
 
-	tm.tasks[name] = task
 }
 
 func (tm *TaskManager) GetClass(name string) *Task {
@@ -40,17 +36,9 @@ func (tm *TaskManager) GetTask(name, encodedData string) *Task {
 	task := tm.GetClass(name)
 	// unserialize data
 
-	typeHandlerFunc := reflect.TypeOf(task.handleFunc)
-	if typeHandlerFunc.NumIn() > 0 {
-		data := reflect.New(typeHandlerFunc.In(0)).Interface()
-		err := serializer.Decode(encodedData, data)
-		if err != nil {
-			panic(err)
-		}
-
-		task.data = reflect.ValueOf(data).Elem().Interface()
-	} else {
-		task.data = nil
+	err := serializer.Decode(encodedData, task.handler)
+	if err != nil {
+		panic(err)
 	}
 
 	//todo: what is this:?

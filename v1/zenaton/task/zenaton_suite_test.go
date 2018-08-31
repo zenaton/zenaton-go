@@ -1,4 +1,4 @@
-package zenaton_test
+package task
 
 import (
 	. "github.com/onsi/ginkgo"

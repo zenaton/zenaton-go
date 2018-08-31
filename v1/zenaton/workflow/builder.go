@@ -1,26 +1,28 @@
-package zenaton
+package workflow
 
-var builderInstance *Builder
+import "github.com/zenaton/zenaton-go/v1/zenaton/client"
 
-type Builder struct {
+var builderInstance2 *Builder2
+
+type Builder2 struct {
 	workflow      *Workflow
 	WorkflowClass string
 	ID            string
-	Client        *Client
+	Client        *client.Client
 }
 
-func NewBuilder(workflow *Workflow) *Builder {
-	if builderInstance == nil {
-		builderInstance = &Builder{
-			Client:        NewClient(false),
-			WorkflowClass: workflow.name,
+func NewBuilder2(workflow *Workflow) *Builder2 {
+	if builderInstance2 == nil {
+		builderInstance2 = &Builder2{
+			Client:        client.NewClient(false),
+			WorkflowClass: workflow.GetName(),
 			workflow:      workflow,
 		}
 	}
-	return builderInstance
+	return builderInstance2
 }
 
-func (b *Builder) WhereID(id string) *Builder {
+func (b *Builder2) WhereID(id string) *Builder2 {
 	b.ID = id
 	return b
 }
@@ -31,7 +33,7 @@ func (b *Builder) WhereID(id string) *Builder {
 //}
 
 // do we want to have a different method for each type? or use this empty interface?
-func (b *Builder) Send(eventName string, eventData interface{}) {
+func (b *Builder2) Send(eventName string, eventData interface{}) {
 	//onEventType := reflect.TypeOf(b.workflow.OnEvent)
 	//fmt.Println("onEventType.In(1): ", onEventType.In(1))
 	//fmt.Println("reflect.TypeOf(eventData) ", reflect.TypeOf(eventData))
@@ -46,8 +48,8 @@ func (b *Builder) Send(eventName string, eventData interface{}) {
  * Kill a workflow instance
  */
 
-func (b *Builder) Kill() *Builder {
-	b.Client.killWorkflow(b.WorkflowClass, b.ID)
+func (b *Builder2) Kill() *Builder2 {
+	b.Client.KillWorkflow(b.WorkflowClass, b.ID)
 	return b
 }
 
@@ -55,8 +57,8 @@ func (b *Builder) Kill() *Builder {
 * Pause a workflow instance
  */
 
-func (b *Builder) Pause() *Builder {
-	b.Client.pauseWorkflow(b.WorkflowClass, b.ID)
+func (b *Builder2) Pause() *Builder2 {
+	b.Client.PauseWorkflow(b.WorkflowClass, b.ID)
 	return b
 }
 
@@ -64,7 +66,7 @@ func (b *Builder) Pause() *Builder {
 * Resume a workflow instance
  */
 
-func (b *Builder) Resume() *Builder {
-	b.Client.resumeWorkflow(b.WorkflowClass, b.ID)
+func (b *Builder2) Resume() *Builder2 {
+	b.Client.ResumeWorkflow(b.WorkflowClass, b.ID)
 	return b
 }
