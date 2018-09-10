@@ -1,10 +1,9 @@
 package zenaton
 
 import (
-	"errors"
-
 	"github.com/zenaton/zenaton-go/v1/zenaton/client"
 	"github.com/zenaton/zenaton-go/v1/zenaton/engine"
+	"github.com/zenaton/zenaton-go/v1/zenaton/errors"
 	"github.com/zenaton/zenaton-go/v1/zenaton/interfaces"
 	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
 	"github.com/zenaton/zenaton-go/v1/zenaton/task"
@@ -20,10 +19,19 @@ type Service struct {
 	Errors          Errors
 }
 
-var ScheduledBoxError = errors.New("ScheduledBoxError")
-
+// Errors is provided so that the agent can use the Errors package without the user of the library having to re-export
+// the errors package
 type Errors struct {
-	ScheduledBoxError error
+	ScheduledBoxError    string
+	ExternalZenatonError string
+	InternalZenatonError string
+}
+
+func (e *Errors) New(name, message string) errors.ZenatonError {
+	return errors.NewWithOffset(name, message, 4)
+}
+func (e *Errors) Wrap(name string, err error) errors.ZenatonError {
+	return errors.WrapWithOffset(name, err, 4)
 }
 
 func NewService() *Service {
@@ -34,7 +42,9 @@ func NewService() *Service {
 		WorkflowManager: workflow.NewWorkflowManager(),
 		TaskManager:     task.NewTaskManager(),
 		Errors: Errors{
-			ScheduledBoxError: ScheduledBoxError,
+			ScheduledBoxError:    errors.ScheduledBoxError,
+			ExternalZenatonError: errors.ExternalZenatonError,
+			InternalZenatonError: errors.InternalZenatonError,
 		},
 	}
 }

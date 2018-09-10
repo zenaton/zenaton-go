@@ -3,29 +3,89 @@ package task
 import (
 	"reflect"
 
+	"encoding/json"
+
+	"fmt"
+
+	"strconv"
+
 	"github.com/zenaton/zenaton-go/v1/zenaton/engine"
 	"github.com/zenaton/zenaton-go/v1/zenaton/interfaces"
 )
 
 type Task struct {
 	name string
-	//todo: would be nice if the handle func could take many arguments, instead of just one. would have to think how that would be done (maybe pass in argments into execute?)
-	handler interfaces.Handler
+	interfaces.Handler
 	//todo: MaxProcessingTime func() int64
+}
+
+type taskType struct {
+	name        string
+	defaultTask *Task
+}
+
+func New(name string, h interfaces.Handler) *taskType {
+	rv := reflect.ValueOf(h)
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+		panic("must pass a pointer to NewWorkflow")
+	}
+
+	validateHandler(h)
+
+	taskT := taskType{
+		name:        name,
+		defaultTask: newInstance(name, h),
+	}
+
+	NewTaskManager().setClass(taskT.name, &taskT)
+	return &taskT
+}
+
+func (tt *taskType) NewInstance(handlers ...interfaces.Handler) *Task {
+	if len(handlers) > 1 {
+		panic("must only pass one handler to taskType.NewInstance()")
+	}
+
+	if len(handlers) == 1 {
+		h := handlers[0]
+		validateHandler(h)
+		return newInstance(tt.name, h)
+	} else {
+		return tt.defaultTask
+	}
+}
+
+func validateHandler(value interface{}) {
+
+	name := reflect.Indirect(reflect.ValueOf(value)).Type().Name()
+
+	jsonV, err := json.Marshal(value)
+	if err != nil {
+		panic("handler type '" + name + "' must be able to be marshaled to json. " + err.Error())
+	}
+
+	newV := reflect.New(reflect.TypeOf(value)).Interface()
+
+	err = json.Unmarshal(jsonV, newV)
+	if err != nil {
+		panic("handler type '" + name + "' must be able to be unmarshaled from json. " + err.Error())
+	}
+}
+
+func newInstance(name string, h interfaces.Handler) *Task {
+	return &Task{
+		name:    name,
+		Handler: h,
+	}
 }
 
 func (t Task) GetName() string { return t.name }
 
 //todo: change
-func (t Task) GetData() interface{} { return t.handler }
-
-func (t Task) Handle() (interface{}, error) {
-	t.handler.Handle()
-	return "", nil
-}
+func (t Task) GetData() interface{} { return t.Handler }
 
 func (t Task) Async() error {
-	t.handler.Handle()
+	t.Handler.Handle()
 	return nil
 }
 
@@ -34,38 +94,35 @@ type MaxProcessingTimer interface {
 }
 
 func (t Task) MaxProcessingTime() int64 {
-	maxer, ok := t.handler.(MaxProcessingTimer)
+	maxer, ok := t.Handler.(MaxProcessingTimer)
 	if ok {
 		return maxer.MaxProcessingTime()
 	}
 	return -1
 }
 
-func New(h interfaces.Handler) *Task {
+//todo: as is, this error is always useless, as the workflow execution always just panics anyway at the point of returning an error if there is one
+func (t *Task) Execute(returnValues ...interface{}) error {
 
-	rv := reflect.ValueOf(h)
-	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		panic("must pass a pointer to NewTask")
+	if len(returnValues) > 1 {
+		panic("must only pass one value to Execute")
 	}
 
-	task := Task{
-		name:    reflect.TypeOf(h).Elem().Name(),
-		handler: h,
+	var output interface{}
+	if len(returnValues) == 1 {
+		returnValue := returnValues[0]
+		rv := reflect.ValueOf(returnValue)
+		if rv.Kind() != reflect.Ptr || rv.IsNil() {
+			panic("must pass a non-nil pointer to task.Execute")
+		}
+
+		output = returnValue
+	} else {
+		var o interface{}
+		output = &o
 	}
 
-	NewTaskManager().setClass(task.name, &task)
-	return &task
-}
-
-//todo: would be great if we could take a pointer to execute and modify that like json.unmarshal does, but it's hard to figure out how they do it
-func (t *Task) Execute() (interface{}, error) {
-	e := engine.NewEngine()
-	output, err := e.Execute([]interfaces.Job{t})
-	//todo: make sure this is impossible to get index out of bounds
-	if output == nil {
-		return nil, err
-	}
-	return output[0], err
+	return engine.NewEngine().Execute([]interfaces.Job{t}, []interface{}{output})
 }
 
 func (t *Task) Dispatch() error {
@@ -85,11 +142,28 @@ func (ts Parallel) Dispatch() error {
 	return e.Dispatch(jobs)
 }
 
-func (ts Parallel) Execute() ([]interface{}, error) {
+func (ts Parallel) Execute(returnValues ...interface{}) error {
+
+	//todo: test this
+	if len(returnValues) > 0 {
+		if len(returnValues) != len(ts) {
+			panic(fmt.Sprint("task: number of parallel tasks (", strconv.Itoa(len(ts)),
+				") and return value pointers (", strconv.Itoa(len(returnValues)), ") do not match"))
+		}
+		for i, returnValue := range returnValues {
+			rv := reflect.ValueOf(returnValue)
+			if rv.Kind() != reflect.Ptr || rv.IsNil() {
+				panic(fmt.Sprint("item at index ", i, " must pass a non-nil pointer to task.Execute"))
+			}
+		}
+	} else {
+		returnValues = make([]interface{}, len(ts))
+	}
+
 	e := engine.NewEngine()
 	var jobs []interfaces.Job
 	for _, task := range ts {
 		jobs = append(jobs, task)
 	}
-	return e.Execute(jobs)
+	return e.Execute(jobs, returnValues)
 }

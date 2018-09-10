@@ -8,9 +8,8 @@ import (
 var instance *Engine
 
 type Engine struct {
-	client     *client.Client
-	processor  Processor
-	processor2 Processor2
+	client    *client.Client
+	processor Processor
 }
 
 func NewEngine() *Engine {
@@ -23,34 +22,31 @@ func NewEngine() *Engine {
 }
 
 type Processor interface {
-	Process([]interfaces.Job, bool) ([]interface{}, error)
-}
-type Processor2 interface {
-	Process2([]interfaces.Handler, bool) ([]interface{}, error)
+	Process([]interfaces.Job, bool, ...interface{}) error
 }
 
 //todo: error handling
-func (e *Engine) Execute(jobs []interfaces.Job) ([]interface{}, error) {
+func (e *Engine) Execute(jobs []interfaces.Job, outputs []interface{}) error {
 
 	// local execution
 	if e.processor == nil || len(jobs) == 0 {
 
-		var outputs []interface{}
-		var output interface{}
+		//var outputs []interface{}
+		//var output interface{}
 		var err error
 
 		for _, job := range jobs {
-			output, err = job.Handle()
+			_, err = job.Handle()
 			if err != nil {
-				return nil, err
+				return err
 			}
-			outputs = append(outputs, output)
+			//outputs = append(outputs, output)
 		}
 
-		return outputs, nil
+		return nil
 	}
 
-	return e.processor.Process(jobs, true)
+	return e.processor.Process(jobs, true, outputs...)
 }
 
 func (e *Engine) Dispatch(jobs []interfaces.Job) error {
@@ -69,8 +65,7 @@ func (e *Engine) Dispatch(jobs []interfaces.Job) error {
 		return nil
 	}
 
-	_, err := e.processor.Process(jobs, false)
-	return err
+	return e.processor.Process(jobs, false)
 }
 
 func (e *Engine) SetProcessor(processor Processor) {

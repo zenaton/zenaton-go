@@ -2,7 +2,7 @@ package interfaces
 
 //todo: move this somewhere else
 type Handler interface {
-	Handle()
+	Handle() (interface{}, error)
 }
 
 type Starter interface {

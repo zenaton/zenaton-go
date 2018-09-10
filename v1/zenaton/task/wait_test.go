@@ -1,7 +1,7 @@
 package task
 
 import (
-	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -27,9 +27,21 @@ var _ = FDescribe("WaitTask", func() {
 		Context("when applying duration methods", func() {
 			It("should WaitTask for the specified time", func() {
 				w := Wait().Seconds(1)
-				a, b, err := w.GetTimestampOrDuration()
+				timestamp, duration, err := w.GetTimestampOrDuration()
 				Expect(err).NotTo(HaveOccurred())
-				fmt.Println("a, b", a, b)
+				Expect(timestamp).To(Equal(int64(0)))
+				Expect(duration).To(Equal(int64(1)))
+			})
+		})
+
+		Context("when applying timestamp methods", func() {
+			It("should WaitTask for the specified time", func() {
+				now := time.Now().Unix()
+				w := Wait().Timestamp(now + 3)
+				timestamp, duration, err := w.GetTimestampOrDuration()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(timestamp).To(Equal(int64(now + 3)))
+				Expect(duration).To(Equal(int64(0)))
 
 			})
 		})

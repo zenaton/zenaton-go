@@ -13,6 +13,8 @@ import (
 
 	"strings"
 
+	"encoding/json"
+
 	"github.com/zenaton/zenaton-go/v1/zenaton/service"
 	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
 )
@@ -99,6 +101,14 @@ func (c *Client) GetWorkerUrl(resources string, params string) string {
 	return c.addAppEnv(url, params)
 }
 
+func (c *Client) getWebsiteURL(resources, params string) string {
+	var url = ZENATON_API_URL + "/" + resources + "?" + API_TOKEN + "=" + apiToken + "&"
+	if os.Getenv("ZENATON_API_URL ") != "" {
+		url = os.Getenv("ZENATON_API_URL ")
+	}
+	return c.addAppEnv(url, params)
+}
+
 //todo: figure out how to handle errors
 func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data interface{}) error {
 
@@ -130,10 +140,14 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 	body[ATTR_DATA] = encodedData
 	body[ATTR_ID] = customID
 
+	fmt.Println("c.getInstanceWorkerUrl(), body", c.getInstanceWorkerUrl(""), body)
 	resp, err := service.Post(c.getInstanceWorkerUrl(""), body)
 	if err != nil {
-		panic(err)
+		if strings.Contains(err.Error(), "connection refused") {
+			panic("connection refused: try starting zenaton with 'zenaton start'")
+		}
 	}
+
 	defer resp.Body.Close()
 	respBody, err := ioutil.ReadAll(resp.Body)
 	//todo: panic? or return error?
@@ -141,7 +155,7 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 		panic(err)
 	}
 	//todo: this is ugly
-	if strings.HasPrefix(string(respBody), `{"error":`) {
+	if strings.Contains(string(respBody), `Your worker does not listen to app`) {
 		panic(string(respBody))
 	}
 	//todo: fix this
@@ -218,6 +232,32 @@ func (c *Client) ResumeWorkflow(workflowName, customId string) error {
 	return nil
 }
 
+func (c *Client) FindWorkflow(workflowName, customId string) (map[string]map[string]interface{}, error) {
+	params := ATTR_ID + "=" + customId + "&" + ATTR_NAME + "=" + workflowName + "&" + ATTR_PROG + "=" + PROG
+	resp, err := service.Get(c.getInstanceWebsiteURL(params))
+	if err != nil {
+		return nil, errors.New("unable to find workflow with id: " + customId + " error: " + err.Error())
+	}
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+
+	if strings.HasPrefix(string(respBody), `{"error":`) {
+		return nil, errors.New(string(respBody))
+	}
+
+	if err != nil {
+		return nil, errors.New("unable to find workflow with id: " + customId + " error: " + err.Error())
+	}
+
+	var respMap map[string]map[string]interface{}
+	err = json.Unmarshal(respBody, &respMap)
+	if err != nil {
+		return nil, errors.New("unable to find workflow with id: " + customId + " error: " + err.Error())
+	}
+
+	return respMap, nil
+}
+
 // todo: should this return something?
 func (c *Client) SendEvent(workflowName, customID, eventName string, eventData interface{}) {
 	var url = c.getSendEventURL()
@@ -231,6 +271,9 @@ func (c *Client) SendEvent(workflowName, customID, eventName string, eventData i
 		panic(err)
 	}
 
+	if encodedData == "null" {
+		encodedData = "{}"
+	}
 	body[EVENT_INPUT] = encodedData
 
 	fmt.Println("sendEvent body: ", body)
@@ -249,6 +292,10 @@ func (c *Client) updateInstance(workflowName, customId, mode string) error {
 
 func (c *Client) getSendEventURL() string {
 	return c.GetWorkerUrl("events", "")
+}
+
+func (c *Client) getInstanceWebsiteURL(params string) string {
+	return c.getWebsiteURL("instances", params)
 }
 
 func (c *Client) getInstanceWorkerUrl(params string) string {

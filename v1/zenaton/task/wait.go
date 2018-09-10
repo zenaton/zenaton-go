@@ -5,6 +5,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/zenaton/zenaton-go/v1/zenaton/engine"
+	"github.com/zenaton/zenaton-go/v1/zenaton/interfaces"
 )
 
 const (
@@ -15,18 +18,24 @@ const (
 )
 
 type WaitTask struct {
-	task     *Task
-	event    string
-	buffer   []duration
-	mode     string
-	timezone *time.Location
+	task      *Task
+	eventName string
+	buffer    []duration
+	mode      string
+	timezone  *time.Location
 }
 
-type _Wait struct{}
+type Event struct {
+	Name string
+	Data interface{}
+}
 
-func (wt *_Wait) Handle() {}
+type wait struct{}
+
+var waitTask = New("_Wait", &wait{}).NewInstance()
+
+func (wt *wait) Handle() (interface{}, error) { return nil, nil }
 func Wait() *WaitTask {
-	waitTask := New(&_Wait{})
 	wait := WaitTask{
 		task: waitTask,
 	}
@@ -34,7 +43,7 @@ func Wait() *WaitTask {
 }
 
 func (w *WaitTask) ForEvent(eventName string) *WaitTask {
-	w.event = eventName
+	w.eventName = eventName
 	return w
 }
 
@@ -43,13 +52,8 @@ type duration struct {
 	value  interface{}
 }
 
-func (w *WaitTask) WithEvent(event string) *WaitTask {
-	w.event = event
-	return w
-}
-
 func (w *WaitTask) Event() string {
-	return w.event
+	return w.eventName
 }
 
 func (w *WaitTask) Seconds(value int64) *WaitTask {
@@ -192,7 +196,7 @@ func (w *WaitTask) initNowThen() (time.Time, time.Time) {
 }
 
 //todo: would be nice to make this unexported
-func (w *WaitTask) GetTimestampOrDuration() (int64, float64, error) {
+func (w *WaitTask) GetTimestampOrDuration() (int64, int64, error) {
 
 	now, then := w.initNowThen()
 
@@ -206,13 +210,13 @@ func (w *WaitTask) GetTimestampOrDuration() (int64, float64, error) {
 		}
 	}
 
-	isTimestamp := w.mode == ""
+	isTimestamp := w.mode != ""
 
 	if isTimestamp {
 		//todo: these shouldn't be 0, right? what if the time until then is actually 0?
 		return then.Unix(), 0, nil
 	} else {
-		return 0, time.Until(then).Seconds(), nil
+		return 0, then.Unix() - now.Unix(), nil
 	}
 }
 
@@ -372,9 +376,21 @@ func (w *WaitTask) GetName() string {
 }
 
 func (w *WaitTask) GetData() interface{} {
-	return w.task.GetData()
+	eventData := make(map[string]string)
+	eventData["eventName"] = w.eventName
+	return eventData
 }
 
-func (w *WaitTask) Execute() (interface{}, error) {
-	return w.task.Execute()
+func (w *WaitTask) Execute() (*Event, error) {
+	var out interface{}
+	err := engine.NewEngine().Execute([]interfaces.Job{w}, []interface{}{&out})
+	event := Event{
+		Name: w.eventName,
+		Data: out,
+	}
+	return &event, err
+}
+
+func (e *Event) Arrived() bool {
+	return e != (&Event{})
 }

@@ -5,13 +5,13 @@ import "fmt"
 var workflowManagerInstance *WorkflowManager
 
 type WorkflowManager struct {
-	workflows2 map[string]*Workflow
+	workflows map[string]*WorkflowType
 }
 
 func NewWorkflowManager() *WorkflowManager {
 	if workflowManagerInstance == nil {
 		workflowManagerInstance = &WorkflowManager{
-			workflows2: make(map[string]*Workflow),
+			workflows: make(map[string]*WorkflowType),
 		}
 	}
 
@@ -32,7 +32,7 @@ func (wfm *WorkflowManager) GetWorkflow(name, encodedData string) *Workflow {
 		encodedData = "{}"
 	}
 
-	workflow.SetDataByEncodedString(encodedData)
+	workflow.defaultWorkflow.SetDataByEncodedString(encodedData)
 
 	//todo: figure out this version stuff
 	//// if Version => the workflow was versioned meanwhile => get the initial class
@@ -47,16 +47,17 @@ func (wfm *WorkflowManager) GetWorkflow(name, encodedData string) *Workflow {
 	// avoid side effect
 	//workflowClass._useInit = true
 	// return workflow
-	return workflow
+	return workflow.defaultWorkflow
 }
 
-func (wfm *WorkflowManager) GetClass(name string) *Workflow {
-	//fmt.Println("wfm.workflows2", wfm.workflows2)
-	return wfm.workflows2[name]
+func (wfm *WorkflowManager) GetClass(name string) *WorkflowType {
+	//fmt.Println("wfm.workflows", wfm.workflows)
+	return wfm.workflows[name]
 }
 
-func (wfm *WorkflowManager) setClass(name string, workflow *Workflow) {
-	if wfm.GetClass(name) == nil {
-		wfm.workflows2[name] = workflow
+func (wfm *WorkflowManager) setClass(name string, workflow *WorkflowType) {
+	if wfm.GetClass(name) != nil {
+		panic(fmt.Sprint("Workflow definition with name '", name, "' already exists"))
 	}
+	wfm.workflows[name] = workflow
 }
