@@ -44,6 +44,19 @@ func (wft *WorkflowType) NewInstance(handlers ...interfaces.Handler) *Workflow {
 	}
 }
 
+type defaultHandler struct{
+	handlerFunc func() (interface{}, error)
+}
+func (dh *defaultHandler) Handle () (interface{}, error){
+	return dh.handlerFunc()
+}
+
+func NewDefault(name string, handlerFunc func() (interface{}, error)) *WorkflowType {
+	return New(name, &defaultHandler{
+		handlerFunc: handlerFunc,
+	})
+}
+
 func New(name string, h interfaces.Handler) *WorkflowType {
 
 	rv := reflect.ValueOf(h)
@@ -146,6 +159,6 @@ func (wf *Workflow) GetCustomID() string {
 	return ""
 }
 
-func (wft *WorkflowType) WhereID(id string) *Builder {
+func (wft *WorkflowType) WhereID(id string) *QueryBuilder {
 	return NewBuilder(wft).WhereID(id)
 }

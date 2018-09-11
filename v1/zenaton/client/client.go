@@ -102,10 +102,11 @@ func (c *Client) GetWorkerUrl(resources string, params string) string {
 }
 
 func (c *Client) getWebsiteURL(resources, params string) string {
-	var url = ZENATON_API_URL + "/" + resources + "?" + API_TOKEN + "=" + apiToken + "&"
-	if os.Getenv("ZENATON_API_URL ") != "" {
-		url = os.Getenv("ZENATON_API_URL ")
+	apiURL := ZENATON_API_URL
+	if os.Getenv("ZENATON_API_URL") != "" {
+		apiURL = os.Getenv("ZENATON_API_URL")
 	}
+	var url = apiURL + "/" + resources + "?" + API_TOKEN + "=" + apiToken + "&"
 	return c.addAppEnv(url, params)
 }
 
@@ -234,8 +235,10 @@ func (c *Client) ResumeWorkflow(workflowName, customId string) error {
 
 func (c *Client) FindWorkflow(workflowName, customId string) (map[string]map[string]interface{}, error) {
 	params := ATTR_ID + "=" + customId + "&" + ATTR_NAME + "=" + workflowName + "&" + ATTR_PROG + "=" + PROG
+
 	resp, err := service.Get(c.getInstanceWebsiteURL(params))
 	if err != nil {
+		fmt.Println("1")
 		return nil, errors.New("unable to find workflow with id: " + customId + " error: " + err.Error())
 	}
 	defer resp.Body.Close()
@@ -246,12 +249,14 @@ func (c *Client) FindWorkflow(workflowName, customId string) (map[string]map[str
 	}
 
 	if err != nil {
+		fmt.Println("2")
 		return nil, errors.New("unable to find workflow with id: " + customId + " error: " + err.Error())
 	}
 
 	var respMap map[string]map[string]interface{}
 	err = json.Unmarshal(respBody, &respMap)
 	if err != nil {
+		//fmt.Println("3", string(respBody))
 		return nil, errors.New("unable to find workflow with id: " + customId + " error: " + err.Error())
 	}
 

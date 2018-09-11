@@ -4,31 +4,31 @@ import (
 	"github.com/zenaton/zenaton-go/v1/zenaton/client"
 )
 
-var builderInstance2 *Builder
+var builderInstance *QueryBuilder
 
-type Builder struct {
-	WorkflowClass string
-	ID            string
-	Client        *client.Client
+type QueryBuilder struct {
+	workflowClass string
+	id            string
+	client        *client.Client
 }
 
-func NewBuilder(workflow *WorkflowType) *Builder {
-	if builderInstance2 == nil {
-		builderInstance2 = &Builder{
-			Client:        client.NewClient(false),
-			WorkflowClass: workflow.name,
+func NewBuilder(workflow *WorkflowType) *QueryBuilder {
+	if builderInstance == nil {
+		builderInstance = &QueryBuilder{
+			client:        client.NewClient(false),
+			workflowClass: workflow.name,
 		}
 	}
-	return builderInstance2
+	return builderInstance
 }
 
-func (b *Builder) WhereID(id string) *Builder {
-	b.ID = id
+func (b *QueryBuilder) WhereID(id string) *QueryBuilder {
+	b.id = id
 	return b
 }
 
-func (b *Builder) Find() (*Workflow, error) {
-	output, err := b.Client.FindWorkflow(b.WorkflowClass, b.ID)
+func (b *QueryBuilder) Find() (*Workflow, error) {
+	output, err := b.client.FindWorkflow(b.workflowClass, b.id)
 	if err != nil {
 		return nil, err
 	}
@@ -39,41 +39,33 @@ func (b *Builder) Find() (*Workflow, error) {
 	return NewWorkflowManager().GetWorkflow(name, properties), nil
 }
 
-// do we want to have a different method for each type? or use this empty interface?
-func (b *Builder) Send(eventName string, eventData interface{}) {
-	//onEventType := reflect.TypeOf(b.workflow.OnEvent)
-	//fmt.Println("onEventType.In(1): ", onEventType.In(1))
-	//fmt.Println("reflect.TypeOf(eventData) ", reflect.TypeOf(eventData))
-	//if onEventType.In(1) != reflect.TypeOf(eventData) {
-	//todo:
-	//panic("incompatible types")
-	//}
-	b.Client.SendEvent(b.WorkflowClass, b.ID, eventName, eventData)
+func (b *QueryBuilder) Send(eventName string, eventData interface{}) {
+	b.client.SendEvent(b.workflowClass, b.id, eventName, eventData)
 }
 
 /**
  * Kill a workflow instance
  */
 
-func (b *Builder) Kill() *Builder {
-	b.Client.KillWorkflow(b.WorkflowClass, b.ID)
-	return b
+func (b *QueryBuilder) Kill() (*QueryBuilder, error) {
+	err := b.client.KillWorkflow(b.workflowClass, b.id)
+	return b, err
 }
 
 /**
 * Pause a workflow instance
  */
 
-func (b *Builder) Pause() *Builder {
-	b.Client.PauseWorkflow(b.WorkflowClass, b.ID)
-	return b
+func (b *QueryBuilder) Pause() (*QueryBuilder, error) {
+	err := b.client.PauseWorkflow(b.workflowClass, b.id)
+	return b, err
 }
 
 /**
 * Resume a workflow instance
  */
 
-func (b *Builder) Resume() *Builder {
-	b.Client.ResumeWorkflow(b.WorkflowClass, b.ID)
-	return b
+func (b *QueryBuilder) Resume() (*QueryBuilder, error) {
+	err := b.client.ResumeWorkflow(b.workflowClass, b.id)
+	return b, err
 }

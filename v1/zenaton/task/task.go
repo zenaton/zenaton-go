@@ -24,6 +24,19 @@ type taskType struct {
 	defaultTask *Task
 }
 
+type defaultHandler struct{
+	handlerFunc func() (interface{}, error)
+}
+func (dh *defaultHandler) Handle () (interface{}, error){
+	return dh.handlerFunc()
+}
+
+func NewDefault(name string, handlerFunc func() (interface{}, error)) *taskType {
+	return New(name, &defaultHandler{
+		handlerFunc: handlerFunc,
+	})
+}
+
 func New(name string, h interfaces.Handler) *taskType {
 	rv := reflect.ValueOf(h)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
@@ -90,13 +103,13 @@ func (t Task) Async() error {
 }
 
 type MaxProcessingTimer interface {
-	MaxProcessingTime() int64
+	MaxTime() int64
 }
 
 func (t Task) MaxProcessingTime() int64 {
 	maxer, ok := t.Handler.(MaxProcessingTimer)
 	if ok {
-		return maxer.MaxProcessingTime()
+		return maxer.MaxTime()
 	}
 	return -1
 }
