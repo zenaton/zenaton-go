@@ -4,22 +4,17 @@ import (
 	"github.com/zenaton/zenaton-go/v1/zenaton/client"
 )
 
-var builderInstance *QueryBuilder
-
 type QueryBuilder struct {
-	workflowClass string
-	id            string
-	client        *client.Client
+	workflowDefinition string
+	id                 string
+	client             *client.Client
 }
 
-func NewBuilder(workflow *WorkflowType) *QueryBuilder {
-	if builderInstance == nil {
-		builderInstance = &QueryBuilder{
-			client:        client.NewClient(false),
-			workflowClass: workflow.name,
-		}
+func NewBuilder(name string) *QueryBuilder {
+	return &QueryBuilder{
+		client:             client.NewClient(false),
+		workflowDefinition: name,
 	}
-	return builderInstance
 }
 
 func (b *QueryBuilder) WhereID(id string) *QueryBuilder {
@@ -27,45 +22,36 @@ func (b *QueryBuilder) WhereID(id string) *QueryBuilder {
 	return b
 }
 
-func (b *QueryBuilder) Find() (*Workflow, error) {
-	output, err := b.client.FindWorkflow(b.workflowClass, b.id)
+func (b *QueryBuilder) Find() (*Instance, error) {
+	output, err := b.client.FindWorkflowInstance(b.workflowDefinition, b.id)
 	if err != nil {
 		return nil, err
 	}
 
-	properties := output["data"]["properties"].(string)
-	name := output["data"]["name"].(string)
+	properties := output["data"]["properties"]
+	name := output["data"]["name"]
 
-	return NewWorkflowManager().GetWorkflow(name, properties), nil
+	return Manager.GetInstance(name, properties)
 }
 
 func (b *QueryBuilder) Send(eventName string, eventData interface{}) {
-	b.client.SendEvent(b.workflowClass, b.id, eventName, eventData)
+	b.client.SendEvent(b.workflowDefinition, b.id, eventName, eventData)
 }
 
-/**
- * Kill a workflow instance
- */
-
+// Kill a workflowDef instance
 func (b *QueryBuilder) Kill() (*QueryBuilder, error) {
-	err := b.client.KillWorkflow(b.workflowClass, b.id)
+	err := b.client.KillWorkflow(b.workflowDefinition, b.id)
 	return b, err
 }
 
-/**
-* Pause a workflow instance
- */
-
+// Pause a workflowDef instance
 func (b *QueryBuilder) Pause() (*QueryBuilder, error) {
-	err := b.client.PauseWorkflow(b.workflowClass, b.id)
+	err := b.client.PauseWorkflow(b.workflowDefinition, b.id)
 	return b, err
 }
 
-/**
-* Resume a workflow instance
- */
-
+// Resume a workflowDef instance
 func (b *QueryBuilder) Resume() (*QueryBuilder, error) {
-	err := b.client.ResumeWorkflow(b.workflowClass, b.id)
+	err := b.client.ResumeWorkflow(b.workflowDefinition, b.id)
 	return b, err
 }

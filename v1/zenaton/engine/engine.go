@@ -5,7 +5,9 @@ import (
 	"github.com/zenaton/zenaton-go/v1/zenaton/interfaces"
 )
 
-var instance *Engine
+var instance = &Engine{
+	client: client.NewClient(false),
+}
 
 type Engine struct {
 	client    *client.Client
@@ -13,11 +15,6 @@ type Engine struct {
 }
 
 func NewEngine() *Engine {
-	if instance == nil {
-		instance = &Engine{
-			client: client.NewClient(false),
-		}
-	}
 	return instance
 }
 
@@ -25,14 +22,11 @@ type Processor interface {
 	Process([]interfaces.Job, bool, ...interface{}) error
 }
 
-//todo: error handling
 func (e *Engine) Execute(jobs []interfaces.Job, outputs []interface{}) error {
 
 	// local execution
 	if e.processor == nil || len(jobs) == 0 {
 
-		//var outputs []interface{}
-		//var output interface{}
 		var err error
 
 		for _, job := range jobs {
@@ -40,7 +34,6 @@ func (e *Engine) Execute(jobs []interfaces.Job, outputs []interface{}) error {
 			if err != nil {
 				return err
 			}
-			//outputs = append(outputs, output)
 		}
 
 		return nil
@@ -53,10 +46,8 @@ func (e *Engine) Dispatch(jobs []interfaces.Job) error {
 
 	if e.processor == nil || len(jobs) == 0 {
 
-		var err error
-
 		for _, job := range jobs {
-			err = job.Async()
+			err := job.Async()
 			if err != nil {
 				return err
 			}

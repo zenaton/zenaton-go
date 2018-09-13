@@ -1,63 +1,80 @@
 package workflow
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
 
-var workflowManagerInstance *WorkflowManager
+	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
+)
 
-type WorkflowManager struct {
-	workflows map[string]*WorkflowType
+type versionOrWorkflowDef struct {
+	versionDef  *VersionDefinition
+	workflowDef *Definition
 }
 
-func NewWorkflowManager() *WorkflowManager {
-	if workflowManagerInstance == nil {
-		workflowManagerInstance = &WorkflowManager{
-			workflows: make(map[string]*WorkflowType),
-		}
-	}
-
-	return workflowManagerInstance
+var Manager = &Store{
+	workflows: make(map[string]*versionOrWorkflowDef),
+	mu:        &sync.RWMutex{},
 }
 
-func (wfm *WorkflowManager) GetWorkflow(name, encodedData string) *Workflow {
+type Store struct {
+	workflows map[string]*versionOrWorkflowDef
+	mu        *sync.RWMutex
+}
 
-	// get workflow class
-	workflow := wfm.GetClass(name)
+func (wfm *Store) GetInstance(name, encodedData string) (*Instance, error) {
 
-	if workflow == nil {
-		panic(fmt.Sprint("unknown task: ", name,
-			". Check that you registered the task with task.Register(&", name, "{}"))
+	def := wfm.GetDefinition(name)
+
+	if def == nil {
+		panic(fmt.Sprint("unknown workflow: ", name))
 	}
 
 	if encodedData == `""` {
 		encodedData = "{}"
 	}
 
-	workflow.defaultWorkflow.SetDataByEncodedString(encodedData)
-
-	//todo: figure out this version stuff
-	//// if Version => the workflow was versioned meanwhile => get the initial class
-	//if "VersionClass" == workflow.name {
-	//	workflowClass = workflowClass.getInitialClass()
-	//}
-	// do not use init function to set data
-	//workflowClass._useInit = false
-	// return new workflow instance
-	// Object.create(workflowClass);
-	//const workflow = new workflowClass(data)
-	// avoid side effect
-	//workflowClass._useInit = true
-	// return workflow
-	return workflow.defaultWorkflow
-}
-
-func (wfm *WorkflowManager) GetClass(name string) *WorkflowType {
-	//fmt.Println("wfm.workflows", wfm.workflows)
-	return wfm.workflows[name]
-}
-
-func (wfm *WorkflowManager) setClass(name string, workflow *WorkflowType) {
-	if wfm.GetClass(name) != nil {
-		panic(fmt.Sprint("Workflow definition with name '", name, "' already exists"))
+	var wfDef *Definition
+	if def.versionDef != nil {
+		// in this case the workflow was versioned while running.
+		// so we get the initial workflow from the list of versions in the version definition
+		wfDef = def.versionDef.getInitialDefinition()
+	} else {
+		wfDef = def.workflowDef
 	}
-	wfm.workflows[name] = workflow
+
+	err := serializer.Decode(encodedData, wfDef.defaultInstance)
+
+	return wfDef.defaultInstance, err
+}
+
+func (wfm *Store) GetDefinition(name string) *versionOrWorkflowDef {
+
+	wfm.mu.RLock()
+	def := wfm.workflows[name]
+	wfm.mu.RUnlock()
+
+	return def
+}
+
+func (wfm *Store) setDefinition(name string, workflow *Definition) {
+	if wfm.GetDefinition(name) != nil {
+		panic(fmt.Sprint("workflowDef definition with name '", name, "' already exists"))
+	}
+	wfm.mu.Lock()
+	wfm.workflows[name] = &versionOrWorkflowDef{
+		workflowDef: workflow,
+	}
+	wfm.mu.Unlock()
+}
+
+func (wfm *Store) setVersionDef(name string, versionDef *VersionDefinition) {
+	if wfm.GetDefinition(name) != nil {
+		panic(fmt.Sprint("workflowDef definition with name '", name, "' already exists"))
+	}
+	wfm.mu.Lock()
+	wfm.workflows[name] = &versionOrWorkflowDef{
+		versionDef: versionDef,
+	}
+	wfm.mu.Unlock()
 }

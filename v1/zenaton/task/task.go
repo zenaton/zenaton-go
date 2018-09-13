@@ -16,7 +16,6 @@ import (
 type Task struct {
 	name string
 	interfaces.Handler
-	//todo: MaxProcessingTime func() int64
 }
 
 type taskType struct {
@@ -24,10 +23,11 @@ type taskType struct {
 	defaultTask *Task
 }
 
-type defaultHandler struct{
+type defaultHandler struct {
 	handlerFunc func() (interface{}, error)
 }
-func (dh *defaultHandler) Handle () (interface{}, error){
+
+func (dh *defaultHandler) Handle() (interface{}, error) {
 	return dh.handlerFunc()
 }
 
@@ -94,7 +94,6 @@ func newInstance(name string, h interfaces.Handler) *Task {
 
 func (t Task) GetName() string { return t.name }
 
-//todo: change
 func (t Task) GetData() interface{} { return t.Handler }
 
 func (t Task) Async() error {
@@ -134,7 +133,6 @@ func (t *Task) Execute(returnValues ...interface{}) error {
 		var o interface{}
 		output = &o
 	}
-
 	return engine.NewEngine().Execute([]interfaces.Job{t}, []interface{}{output})
 }
 

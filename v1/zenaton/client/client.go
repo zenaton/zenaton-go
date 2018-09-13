@@ -55,8 +55,7 @@ var (
 	appEnv         string
 )
 
-type Client struct {
-}
+type Client struct{}
 
 func InitClient(appIDx, apiTokenx, appEnvx string) {
 	appID = appIDx
@@ -233,7 +232,7 @@ func (c *Client) ResumeWorkflow(workflowName, customId string) error {
 	return nil
 }
 
-func (c *Client) FindWorkflow(workflowName, customId string) (map[string]map[string]interface{}, error) {
+func (c *Client) FindWorkflowInstance(workflowName, customId string) (map[string]map[string]string, error) {
 	params := ATTR_ID + "=" + customId + "&" + ATTR_NAME + "=" + workflowName + "&" + ATTR_PROG + "=" + PROG
 
 	resp, err := service.Get(c.getInstanceWebsiteURL(params))
@@ -253,7 +252,7 @@ func (c *Client) FindWorkflow(workflowName, customId string) (map[string]map[str
 		return nil, errors.New("unable to find workflow with id: " + customId + " error: " + err.Error())
 	}
 
-	var respMap map[string]map[string]interface{}
+	var respMap map[string]map[string]string
 	err = json.Unmarshal(respBody, &respMap)
 	if err != nil {
 		//fmt.Println("3", string(respBody))
