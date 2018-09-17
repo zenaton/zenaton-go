@@ -13,14 +13,15 @@ import (
 	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
 )
 
-type Task struct {
+type Instance struct {
 	name string
 	interfaces.Handler
 }
 
-type taskType struct {
+type Definition struct {
 	name        string
-	defaultTask *Task
+	defaultTask *Instance
+	initFunc    reflect.Value
 }
 
 type defaultHandler struct {
@@ -31,13 +32,13 @@ func (dh *defaultHandler) Handle() (interface{}, error) {
 	return dh.handlerFunc()
 }
 
-func NewDefault(name string, handlerFunc func() (interface{}, error)) *taskType {
-	return New(name, &defaultHandler{
+func New(name string, handlerFunc func() (interface{}, error)) *Definition {
+	return NewCustom(name, &defaultHandler{
 		handlerFunc: handlerFunc,
 	})
 }
 
-func New(name string, h interfaces.Handler) *taskType {
+func NewCustom(name string, h interfaces.Handler) *Definition {
 	rv := reflect.ValueOf(h)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
 		panic("must pass a pointer to NewWorkflow")
@@ -45,27 +46,55 @@ func New(name string, h interfaces.Handler) *taskType {
 
 	validateHandler(h)
 
-	taskT := taskType{
+	taskT := Definition{
 		name:        name,
 		defaultTask: newInstance(name, h),
 	}
+	initFunc, ok := validateInit(h)
+	if ok {
+		taskT.initFunc = initFunc
+	}
 
-	NewTaskManager().setClass(taskT.name, &taskT)
+	Manager.setDefinition(taskT.name, &taskT)
 	return &taskT
 }
 
-func (tt *taskType) NewInstance(handlers ...interfaces.Handler) *Task {
-	if len(handlers) > 1 {
-		panic("must only pass one handler to taskType.NewInstance()")
+func (tt *Definition) New(args ...interface{}) *Instance {
+
+	if len(args) > 0 {
+		if !tt.initFunc.IsValid() {
+			panic("task: no Init() method set on: " + tt.name)
+		}
+
+		//here we recover the panic just to add some more helpful information, then we re-panic
+		defer func() {
+			r := recover()
+			if r != nil {
+				panic(fmt.Sprint("task: arguments passed to Definition.New() must be of the same time and quantity of those defined in the Init function"))
+			}
+		}()
+
+		values := []reflect.Value{reflect.ValueOf(tt.defaultTask.Handler)}
+		for _, arg := range args {
+			values = append(values, reflect.ValueOf(arg))
+		}
+
+		//this will panic if the arguments passed to New() don't match the provided Init function.
+		tt.initFunc.Call(values)
+	}
+	return tt.defaultTask
+}
+
+func validateInit(value interface{}) (reflect.Value, bool) {
+
+	rt := reflect.TypeOf(value)
+
+	initMethod, ok := rt.MethodByName("Init")
+	if !ok {
+		return reflect.Value{}, false
 	}
 
-	if len(handlers) == 1 {
-		h := handlers[0]
-		validateHandler(h)
-		return newInstance(tt.name, h)
-	} else {
-		return tt.defaultTask
-	}
+	return initMethod.Func, true
 }
 
 func validateHandler(value interface{}) {
@@ -85,19 +114,19 @@ func validateHandler(value interface{}) {
 	}
 }
 
-func newInstance(name string, h interfaces.Handler) *Task {
-	return &Task{
+func newInstance(name string, h interfaces.Handler) *Instance {
+	return &Instance{
 		name:    name,
 		Handler: h,
 	}
 }
 
-func (t Task) GetName() string { return t.name }
+func (i *Instance) GetName() string { return i.name }
 
-func (t Task) GetData() interface{} { return t.Handler }
+func (i *Instance) GetData() interface{} { return i.Handler }
 
-func (t Task) Async() error {
-	t.Handler.Handle()
+func (i *Instance) Async() error {
+	i.Handler.Handle()
 	return nil
 }
 
@@ -105,8 +134,8 @@ type MaxProcessingTimer interface {
 	MaxTime() int64
 }
 
-func (t Task) MaxProcessingTime() int64 {
-	maxer, ok := t.Handler.(MaxProcessingTimer)
+func (i *Instance) MaxProcessingTime() int64 {
+	maxer, ok := i.Handler.(MaxProcessingTimer)
 	if ok {
 		return maxer.MaxTime()
 	}
@@ -146,7 +175,7 @@ func (te *taskExecution) Output(values ...interface{}) error {
 func outputFromInterface(to, from interface{}) {
 	rv := reflect.ValueOf(to)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		panic(fmt.Sprint("must pass a non-nil pointer to task.Execute"))
+		panic(fmt.Sprint("must pass a non-nil pointer to task.Output"))
 	}
 
 	if from != nil && to != nil {
@@ -158,6 +187,12 @@ func outputFromInterface(to, from interface{}) {
 }
 
 func outputFromSerialized(to interface{}, from string) error {
+
+	rv := reflect.ValueOf(to)
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+		panic(fmt.Sprint("must pass a non-nil pointer to task.Output"))
+	}
+
 	var combinedOutput map[string]json.RawMessage
 
 	err := serializer.Decode(from, &combinedOutput)
@@ -178,9 +213,9 @@ func outputFromSerialized(to interface{}, from string) error {
 	return nil
 }
 
-func (t *Task) Execute() *taskExecution {
+func (i *Instance) Execute() *taskExecution {
 
-	outputValues, serializedValues, errs := engine.NewEngine().Execute([]interfaces.Job{t})
+	outputValues, serializedValues, errs := engine.NewEngine().Execute([]interfaces.Job{i})
 
 	var ex taskExecution
 
@@ -196,9 +231,9 @@ func (t *Task) Execute() *taskExecution {
 	return &ex
 }
 
-func (t *Task) Dispatch() {
+func (i *Instance) Dispatch() {
 	e := engine.NewEngine()
-	e.Dispatch([]interfaces.Job{t})
+	e.Dispatch([]interfaces.Job{i})
 }
 
 type parallelExecution struct {
@@ -244,7 +279,7 @@ func (pe *parallelExecution) Output(values ...interface{}) []error {
 	return nil
 }
 
-type Parallel []*Task
+type Parallel []*Instance
 
 func (ts Parallel) Dispatch() {
 	e := engine.NewEngine()
@@ -256,22 +291,6 @@ func (ts Parallel) Dispatch() {
 }
 
 func (ts Parallel) Execute() *parallelExecution {
-
-	////todo: test this
-	//if len(returnValues) > 0 {
-	//	if len(returnValues) != len(ts) {
-	//		panic(fmt.Sprint("task: number of parallel tasks (", strconv.Itoa(len(ts)),
-	//			") and return value pointers (", strconv.Itoa(len(returnValues)), ") do not match"))
-	//	}
-	//	for i, returnValue := range returnValues {
-	//		rv := reflect.ValueOf(returnValue)
-	//		if rv.Kind() != reflect.Ptr || rv.IsNil() {
-	//			panic(fmt.Sprint("item at index ", i, " must pass a non-nil pointer to task.Execute"))
-	//		}
-	//	}
-	//} else {
-	//	returnValues = make([]interface{}, len(ts))
-	//}
 
 	e := engine.NewEngine()
 	var jobs []interfaces.Job

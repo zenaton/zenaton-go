@@ -15,7 +15,7 @@ type Service struct {
 	Client          *client.Client
 	Engine          *engine.Engine
 	WorkflowManager *workflow.Store
-	TaskManager     *task.TaskManager
+	TaskManager     *task.Store
 	Errors          Errors
 }
 
@@ -40,7 +40,7 @@ func NewService() *Service {
 		Engine:          engine.NewEngine(),
 		Serializer:      &serializer.Serializer{},
 		WorkflowManager: workflow.Manager,
-		TaskManager:     task.NewTaskManager(),
+		TaskManager:     task.Manager,
 		Errors: Errors{
 			ScheduledBoxError:    errors.ScheduledBoxError,
 			ExternalZenatonError: errors.ExternalZenatonError,
@@ -54,7 +54,7 @@ func InitClient(appID, apiToken, appEnv string) {
 }
 
 type Workflow = workflow.Instance
-type Task = task.Task
+type Task = task.Instance
 type Wait = task.WaitTask
 type Job = interfaces.Job
 type Processor = engine.Processor

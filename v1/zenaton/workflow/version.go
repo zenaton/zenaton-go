@@ -27,16 +27,16 @@ func Version(name string, workflowDefinitions []*Definition) *VersionDefinition 
 func (vd *VersionDefinition) NewInstance(handlers ...interfaces.Handler) *Instance {
 
 	if len(handlers) > 1 {
-		panic("must pass at maximum one handler to VersionDefinition.NewInstance()")
+		panic("must pass at maximum one handler to VersionDefinition.New()")
 	}
 
 	var instance *Instance
 	if len(handlers) == 1 {
 		h := handlers[0]
 		validateHandler(h)
-		instance = vd.versions[len(vd.versions)-1].NewInstance(h)
+		instance = vd.versions[len(vd.versions)-1].New(h)
 	} else {
-		instance = vd.versions[len(vd.versions)-1].NewInstance()
+		instance = vd.versions[len(vd.versions)-1].New()
 	}
 	instance.setCanonical(vd.name)
 	return instance
@@ -52,6 +52,6 @@ func (vd *VersionDefinition) getInitialDefinition() *Definition {
 }
 
 //todo: this needs testing
-func (vd *VersionDefinition) WhereID(id string) *QueryBuilder {
-	return NewBuilder(vd.name).WhereID(id)
+func (vd *VersionDefinition) WhereID(id string) *queryBuilder {
+	return newBuilder(vd.name).WhereID(id)
 }

@@ -6,6 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"encoding/json"
+	"fmt"
+	"reflect"
+
 	"github.com/zenaton/zenaton-go/v1/zenaton/engine"
 	"github.com/zenaton/zenaton-go/v1/zenaton/interfaces"
 	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
@@ -19,7 +23,7 @@ const (
 )
 
 type WaitTask struct {
-	task      *Task
+	task      *Instance
 	eventName string
 	buffer    []duration
 	mode      string
@@ -33,7 +37,7 @@ type Event struct {
 
 type wait struct{}
 
-var waitTask = New("_Wait", &wait{}).NewInstance()
+var waitTask = NewCustom("_Wait", &wait{}).New()
 
 func (wt *wait) Handle() (interface{}, error) { return nil, nil }
 func Wait() *WaitTask {
@@ -139,8 +143,8 @@ func (w *WaitTask) At(value string) *WaitTask {
 	return w
 }
 
-func (w *WaitTask) DayOfMonth(value string) *WaitTask {
-	w.push(duration{"dayOfMonth", value})
+func (w *WaitTask) DayOfTheMonth(value int) *WaitTask {
+	w.push(duration{"dayOfTheMonth", value})
 	return w
 }
 
@@ -227,8 +231,8 @@ func (w *WaitTask) apply(method string, value interface{}, now, then time.Time) 
 		return w._timestamp(value.(int64)), nil
 	case "at":
 		return w._at(value.(string), now, then)
-	case "dayOfMonth":
-		return w._dayOfMonth(value.(int), now, then), nil
+	case "dayOfTheMonth":
+		return w._dayOfTheMonth(value.(int), now, then), nil
 	case "monday":
 		return w._weekDay(value.(int), 1, then), nil
 	case "tuesday":
@@ -298,7 +302,7 @@ func (w *WaitTask) _at(t string, now, then time.Time) (time.Time, error) {
 	return then, nil
 }
 
-func (w *WaitTask) _dayOfMonth(day int, now, then time.Time) time.Time {
+func (w *WaitTask) _dayOfTheMonth(day int, now, then time.Time) time.Time {
 	w._setMode(MODE_MONTH_DAY)
 
 	then = time.Date(now.Year(), now.Month(), day, now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), w.timezone)
@@ -382,20 +386,54 @@ func (w *WaitTask) GetData() interface{} {
 	return eventData
 }
 
-func (w *WaitTask) Execute() *Event {
+type waitExecution struct {
+	serializedEventValue string
+}
+
+func (w *WaitTask) Execute() *waitExecution {
 	_, serializedEvents, _ := engine.NewEngine().Execute([]interfaces.Job{w})
 
+	var waitExecution waitExecution
 	if len(serializedEvents) == 0 {
-		return nil
+		waitExecution.serializedEventValue = ""
+	} else {
+		waitExecution.serializedEventValue = serializedEvents[0]
 	}
 
-	var event Event
-	err := serializer.Decode(serializedEvents[0], &event)
+	return &waitExecution
+}
+
+func (we *waitExecution) EventReceived() bool {
+	return we.serializedEventValue != ""
+}
+
+func (we *waitExecution) Output(value interface{}) {
+
+	if we.serializedEventValue == "" {
+		return
+	}
+
+	rv := reflect.ValueOf(value)
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+		panic(fmt.Sprint("must pass a non-nil pointer to waitExecution.Output"))
+	}
+
+	var eventMap map[string]json.RawMessage
+	err := serializer.Decode(we.serializedEventValue, &eventMap)
 	if err != nil {
 		panic(err)
 	}
 
-	return &event
+	eventInput := string(eventMap["event_input"])
+	// todo: what if the user wants to send a string "{}". should fix this
+	if eventInput == `"{}"` {
+		return
+	}
+
+	err = serializer.Decode(eventInput, &value)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (e *Event) Arrived() bool {

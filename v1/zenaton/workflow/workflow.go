@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	fmt "fmt"
 	"reflect"
 
 	"encoding/json"
@@ -13,6 +14,7 @@ import (
 type Definition struct {
 	name            string
 	defaultInstance *Instance
+	initFunc        reflect.Value
 }
 
 func New(name string, handlerFunc func() (interface{}, error)) *Definition {
@@ -35,12 +37,17 @@ func NewCustom(name string, h interfaces.Handler) *Definition {
 		defaultInstance: newInstance(name, h),
 	}
 
+	initFunc, ok := validateInit(h)
+	if ok {
+		def.initFunc = initFunc
+	}
+
 	Manager.setDefinition(def.name, &def)
 	return &def
 }
 
-func (d *Definition) WhereID(id string) *QueryBuilder {
-	return NewBuilder(d.name).WhereID(id)
+func (d *Definition) WhereID(id string) *queryBuilder {
+	return newBuilder(d.name).WhereID(id)
 }
 
 type defaultHandler struct {
@@ -59,19 +66,42 @@ type Instance struct {
 	id        string
 }
 
-func (d *Definition) NewInstance(handlers ...interfaces.Handler) *Instance {
+func (d *Definition) New(args ...interface{}) *Instance {
 
-	if len(handlers) > 1 {
-		panic("must only pass one handler to Definition.NewInstance()")
+	if len(args) > 0 {
+		if !d.initFunc.IsValid() {
+			panic("workflow: no Init() method set on: " + d.name)
+		}
+
+		// here we recover the panic just to add some more helpful information, then we re-panic
+		defer func() {
+			r := recover()
+			if r != nil {
+				panic(fmt.Sprint("workflow: arguments passed to Definition.New() must be of the same time and quantity of those defined in the Init function"))
+			}
+		}()
+
+		values := []reflect.Value{reflect.ValueOf(d.defaultInstance.Handler)}
+		for _, arg := range args {
+			values = append(values, reflect.ValueOf(arg))
+		}
+
+		//this will panic if the arguments passed to New() don't match the provided Init function.
+		d.initFunc.Call(values)
+	}
+	return d.defaultInstance
+}
+
+func validateInit(value interface{}) (reflect.Value, bool) {
+
+	rt := reflect.TypeOf(value)
+
+	initMethod, ok := rt.MethodByName("Init")
+	if !ok {
+		return reflect.Value{}, false
 	}
 
-	if len(handlers) == 1 {
-		h := handlers[0]
-		validateHandler(h)
-		return newInstance(d.name, h)
-	} else {
-		return d.defaultInstance
-	}
+	return initMethod.Func, true
 }
 
 func (i *Instance) Dispatch() {

@@ -6,45 +6,39 @@ import (
 	"sync"
 )
 
-var taskManagerInstance = &TaskManager{
-	tasks: make(map[string]*taskType),
+var Manager = &Store{
+	tasks: make(map[string]*Definition),
 	mu:    &sync.RWMutex{},
 }
 
-type TaskManager struct {
-	tasks map[string]*taskType
+type Store struct {
+	tasks map[string]*Definition
 	mu    *sync.RWMutex
 }
 
-//todo: problem, This shouldn't be accessible to the user
-func NewTaskManager() *TaskManager {
-	return taskManagerInstance
-}
-
-func (tm *TaskManager) setClass(name string, tt *taskType) {
+func (s *Store) setDefinition(name string, tt *Definition) {
 	// check that this task does not exist yet
-	//todo: is this right?
-	if tm.GetClass(name) != nil {
-		panic(fmt.Sprint("Task definition with name '", name, "' already exists"))
+	if s.GetDefinition(name) != nil {
+		panic(fmt.Sprint("Instance definition with name '", name, "' already exists"))
 	}
 
-	tm.mu.Lock()
-	tm.tasks[name] = tt
-	tm.mu.Unlock()
+	s.mu.Lock()
+	s.tasks[name] = tt
+	s.mu.Unlock()
 
 }
 
-func (tm *TaskManager) GetClass(name string) *taskType {
-	tm.mu.RLock()
-	t := tm.tasks[name]
-	tm.mu.RUnlock()
+func (s *Store) GetDefinition(name string) *Definition {
+	s.mu.RLock()
+	t := s.tasks[name]
+	s.mu.RUnlock()
 	return t
 }
 
-func (tm *TaskManager) GetTask(name, encodedData string) *Task {
+func (s *Store) GetInstance(name, encodedData string) *Instance {
 
 	// get task class
-	tt := tm.GetClass(name)
+	tt := s.GetDefinition(name)
 
 	// unserialize data
 	err := serializer.Decode(encodedData, tt.defaultTask.Handler)
