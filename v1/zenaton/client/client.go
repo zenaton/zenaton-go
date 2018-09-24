@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"runtime"
 	"strconv"
@@ -140,9 +141,6 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 	body[ATTR_DATA] = encodedData
 	body[ATTR_ID] = customID
 
-	//fmt.Println("body: ", body)
-	//fmt.Println("c.getInstanceWorkerUrl(): ", c.getInstanceWorkerUrl(""))
-
 	resp, err := service.Post(c.getInstanceWorkerUrl(""), body)
 	if err != nil {
 		if strings.Contains(err.Error(), "connection refused") {
@@ -188,32 +186,32 @@ func (c *Client) ResumeWorkflow(workflowName, customId string) error {
 	return nil
 }
 
-func (c *Client) FindWorkflowInstance(workflowName, customId string) (map[string]map[string]string, error) {
+func (c *Client) FindWorkflowInstance(workflowName, customId string) (map[string]map[string]string, bool, error) {
 	params := ATTR_ID + "=" + customId + "&" + ATTR_NAME + "=" + workflowName + "&" + ATTR_PROG + "=" + PROG
 
 	resp, err := service.Get(c.getInstanceWebsiteURL(params))
 	if err != nil {
-		return nil, errors.New("unable to find workflow with id: " + customId + " error: " + err.Error())
+		return nil, false, errors.New("unable to find workflow with id: " + customId + " error: " + err.Error())
 	}
 	defer resp.Body.Close()
 	respBody, err := ioutil.ReadAll(resp.Body)
 
-	if strings.HasPrefix(string(respBody), `{"error":`) {
-		return nil, errors.New(string(respBody))
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, false, nil
 	}
 
 	if err != nil {
-		return nil, errors.New("unable to find workflow with id: " + customId + " error: " + err.Error())
+		return nil, false, errors.New("unable to find workflow with id: " + customId + " error: " + err.Error())
 	}
 
 	var respMap map[string]map[string]string
+
 	err = json.Unmarshal(respBody, &respMap)
 	if err != nil {
-		//fmt.Println("3", string(respBody))
-		return nil, errors.New("unable to find workflow with id: " + customId + " error: " + err.Error())
+		return nil, false, errors.New("unable to find workflow with id: " + customId + " error: " + err.Error())
 	}
 
-	return respMap, nil
+	return respMap, true, nil
 }
 
 // todo: should this return something?

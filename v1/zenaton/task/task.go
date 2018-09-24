@@ -66,23 +66,39 @@ func (tt *Definition) New(args ...interface{}) *Instance {
 			panic("task: no Init() method set on: " + tt.name)
 		}
 
-		//here we recover the panic just to add some more helpful information, then we re-panic
-		defer func() {
-			r := recover()
-			if r != nil {
-				panic(fmt.Sprint("task: arguments passed to Definition.New() must be of the same time and quantity of those defined in the Init function"))
-			}
-		}()
-
-		values := []reflect.Value{reflect.ValueOf(tt.defaultTask.Handler)}
-		for _, arg := range args {
-			values = append(values, reflect.ValueOf(arg))
-		}
-
-		//this will panic if the arguments passed to New() don't match the provided Init function.
-		tt.initFunc.Call(values)
+		tt.callInit(args)
 	}
+
+	jsonDefaultHandler, err := json.Marshal(tt.defaultTask.Handler)
+	if err != nil {
+		panic("task: must be able to marshal handler to json: " + err.Error())
+	}
+
+	newH := reflect.New(reflect.TypeOf(tt.defaultTask.Handler)).Interface()
+	err = json.Unmarshal(jsonDefaultHandler, &newH)
+	if err != nil {
+		panic(fmt.Sprint("task: must be able to json unmarshal into the handler type... ", err.Error()))
+	}
+
 	return tt.defaultTask
+}
+
+func (tt *Definition) callInit(args []interface{}) {
+	//here we recover the panic just to add some more helpful information, then we re-panic
+	defer func() {
+		r := recover()
+		if r != nil {
+			panic(fmt.Sprint("task: arguments passed to Definition.New() must be of the same type and quantity of those defined in the Init function... ", r))
+		}
+	}()
+
+	values := []reflect.Value{reflect.ValueOf(tt.defaultTask.Handler)}
+	for _, arg := range args {
+		values = append(values, reflect.ValueOf(arg))
+	}
+
+	//this will panic if the arguments passed to New() don't match the provided Init function.
+	tt.initFunc.Call(values)
 }
 
 func validateInit(value interface{}) (reflect.Value, bool) {

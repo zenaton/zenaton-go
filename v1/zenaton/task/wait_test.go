@@ -1,32 +1,19 @@
-package task
+package task_test
 
 import (
+	"github.com/zenaton/zenaton-go/v1/zenaton/task"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = FDescribe("WaitTask", func() {
-
-	Describe("WithTimestamp", func() {
-		Context("Timezone", func() {
-			It("sets the timezone", func() {
-				w := Wait()
-				err := w.Timezone("invalidTimezone")
-				Expect(err.Error()).To(ContainSubstring("cannot find invalidTimezone"))
-
-				err = w.Timezone("America/Sao_Paulo")
-				Expect(err).NotTo(HaveOccurred())
-				Expect(w.timezone.String()).To(Equal("America/Sao_Paulo"))
-			})
-		})
-	})
+var _ = Describe("WaitTask", func() {
 
 	Context("without timezones", func() {
 		Context("when applying duration methods", func() {
 			It("should WaitTask for the specified time", func() {
-				w := Wait().Seconds(1)
+				w := task.Wait().Seconds(1)
 				timestamp, duration, err := w.GetTimestampOrDuration()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(timestamp).To(Equal(int64(0)))
@@ -37,7 +24,7 @@ var _ = FDescribe("WaitTask", func() {
 		Context("when applying timestamp methods", func() {
 			It("should WaitTask for the specified time", func() {
 				now := time.Now().Unix()
-				w := Wait().Timestamp(now + 3)
+				w := task.Wait().Timestamp(now + 3)
 				timestamp, duration, err := w.GetTimestampOrDuration()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(timestamp).To(Equal(int64(now + 3)))

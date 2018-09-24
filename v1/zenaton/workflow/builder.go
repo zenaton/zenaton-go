@@ -23,9 +23,14 @@ func (b *queryBuilder) WhereID(id string) *queryBuilder {
 }
 
 func (b *queryBuilder) Find() (*Instance, error) {
-	output, err := b.client.FindWorkflowInstance(b.workflowDefinition, b.id)
+	output, ok, err := b.client.FindWorkflowInstance(b.workflowDefinition, b.id)
+
 	if err != nil {
 		return nil, err
+	}
+
+	if !ok {
+		return nil, nil
 	}
 
 	properties := output["data"]["properties"]

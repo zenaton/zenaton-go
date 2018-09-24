@@ -143,8 +143,8 @@ func (w *WaitTask) At(value string) *WaitTask {
 	return w
 }
 
-func (w *WaitTask) DayOfTheMonth(value int) *WaitTask {
-	w.push(duration{"dayOfTheMonth", value})
+func (w *WaitTask) DayOfMonth(value int) *WaitTask {
+	w.push(duration{"dayOfMonth", value})
 	return w
 }
 
@@ -231,8 +231,8 @@ func (w *WaitTask) apply(method string, value interface{}, now, then time.Time) 
 		return w._timestamp(value.(int64)), nil
 	case "at":
 		return w._at(value.(string), now, then)
-	case "dayOfTheMonth":
-		return w._dayOfTheMonth(value.(int), now, then), nil
+	case "dayOfMonth":
+		return w._dayOfMonth(value.(int), now, then), nil
 	case "monday":
 		return w._weekDay(value.(int), 1, then), nil
 	case "tuesday":
@@ -302,7 +302,7 @@ func (w *WaitTask) _at(t string, now, then time.Time) (time.Time, error) {
 	return then, nil
 }
 
-func (w *WaitTask) _dayOfTheMonth(day int, now, then time.Time) time.Time {
+func (w *WaitTask) _dayOfMonth(day int, now, then time.Time) time.Time {
 	w._setMode(MODE_MONTH_DAY)
 
 	then = time.Date(now.Year(), now.Month(), day, now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), w.timezone)
