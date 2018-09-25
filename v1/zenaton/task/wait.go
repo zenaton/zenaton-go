@@ -2,6 +2,7 @@ package task
 
 import (
 	"errors"
+	"github.com/zenaton/zenaton-go/v1/zenaton/interfaces"
 	"strconv"
 	"strings"
 	"time"
@@ -10,8 +11,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/zenaton/zenaton-go/v1/zenaton/engine"
-	"github.com/zenaton/zenaton-go/v1/zenaton/interfaces"
+	"github.com/zenaton/zenaton-go/v1/zenaton/internal/engine"
 	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
 )
 
@@ -190,12 +190,11 @@ func (w *WaitTask) push(data duration) {
 func (w *WaitTask) initNowThen() (time.Time, time.Time) {
 	// get set or current time zone
 
-	var tz *time.Location
 	if w.timezone == nil {
-		tz = time.Local
+		w.timezone = time.Local
 	}
 	n := time.Now()
-	var now = time.Date(n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second(), n.Nanosecond(), tz)
+	var now = time.Date(n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second(), n.Nanosecond(), w.timezone)
 	var then = now
 	return now, then
 }
@@ -372,18 +371,16 @@ func (w *WaitTask) Handle() (interface{}, error) {
 	return w.task.Handle()
 }
 
-func (w *WaitTask) Async() error {
-	return w.task.Async()
+func (w *WaitTask) LaunchInfo() engine.LaunchInfo {
+	return w.task.LaunchInfo()
 }
 
 func (w *WaitTask) GetName() string {
 	return w.task.GetName()
 }
 
-func (w *WaitTask) GetData() interface{} {
-	eventData := make(map[string]string)
-	eventData["eventName"] = w.eventName
-	return eventData
+func (w *WaitTask) GetData() interfaces.Handler {
+	return waitTask.Handler
 }
 
 type waitExecution struct {
@@ -391,7 +388,7 @@ type waitExecution struct {
 }
 
 func (w *WaitTask) Execute() *waitExecution {
-	_, serializedEvents, _ := engine.NewEngine().Execute([]interfaces.Job{w})
+	_, serializedEvents, _ := engine.NewEngine().Execute([]engine.Job{w})
 
 	var waitExecution waitExecution
 	if len(serializedEvents) == 0 {

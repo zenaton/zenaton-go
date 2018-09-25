@@ -1,8 +1,8 @@
 package engine
 
 import (
-	"github.com/zenaton/zenaton-go/v1/zenaton/client"
 	"github.com/zenaton/zenaton-go/v1/zenaton/interfaces"
+	"github.com/zenaton/zenaton-go/v1/zenaton/internal/client"
 )
 
 var instance = &Engine{
@@ -19,17 +19,32 @@ func NewEngine() *Engine {
 }
 
 type Processor interface {
-	Process([]interfaces.Job, bool) ([]interface{}, []string, []error)
+	Process([]Job, bool) ([]interface{}, []string, []error)
 }
 
-func (e *Engine) Execute(jobs []interfaces.Job) ([]interface{}, []string, []error) {
+type LaunchInfo struct {
+	Type      string
+	Name      string
+	Canonical string
+	ID        string
+	Data      interface{}
+}
+
+type Job interface {
+	Handle() (interface{}, error)
+	LaunchInfo() LaunchInfo
+	GetName() string
+	GetData() interfaces.Handler
+}
+
+func (e *Engine) Execute(jobs []Job) ([]interface{}, []string, []error) {
 
 	// local execution
 	if e.processor == nil || len(jobs) == 0 {
 		var outputs []interface{}
 		var errs []error
 		for _, job := range jobs {
-			out, err := job.Handle()
+			out, err := job.GetData().Handle()
 
 			errs = append(errs, err)
 			outputs = append(outputs, out)
@@ -42,21 +57,23 @@ func (e *Engine) Execute(jobs []interfaces.Job) ([]interface{}, []string, []erro
 	return outputValues, serializedOutputs, errs
 }
 
-func (e *Engine) Dispatch(jobs []interfaces.Job) []error {
+func (e *Engine) Dispatch(jobs []Job) {
 
 	if e.processor == nil || len(jobs) == 0 {
 
-		var errs []error
 		for _, job := range jobs {
-			err := job.Async()
-			errs = append(errs, err)
+			li := job.LaunchInfo()
+			if li.Type == "workflow" {
+				client.NewClient(false).StartWorkflow(li.Name, li.Canonical, li.ID, li.Data)
+			} else {
+				job.Handle()
+			}
 		}
 
-		return errs
+		return
 	}
 
-	_, _, errs := e.processor.Process(jobs, false)
-	return errs
+	e.processor.Process(jobs, false)
 }
 
 func (e *Engine) SetProcessor(processor Processor) {

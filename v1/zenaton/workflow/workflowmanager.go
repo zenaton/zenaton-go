@@ -12,19 +12,24 @@ type versionOrWorkflowDef struct {
 	workflowDef *Definition
 }
 
-var Manager = &Store{
+// UnsafeManager is used by the agent, and thus must be exported. But a normal user of the library shouldn't use this
+// directly.
+var UnsafeManager = &Store{
 	workflows: make(map[string]*versionOrWorkflowDef),
 	mu:        &sync.RWMutex{},
 }
 
+// Store holds all workflow Definitions.
 type Store struct {
 	workflows map[string]*versionOrWorkflowDef
 	mu        *sync.RWMutex
 }
 
-func (wfm *Store) GetInstance(name, encodedData string) (*Instance, error) {
+// UnsafeGetInstance is used by the agent, and thus must be exported. But a normal user of the library shouldn't use this
+// directly.
+func (wfm *Store) UnsafeGetInstance(name, encodedData string) (*Instance, error) {
 
-	def := wfm.GetDefinition(name)
+	def := wfm.UnsafeGetDefinition(name)
 
 	if def == nil {
 		panic(fmt.Sprint("unknown workflow: ", name))
@@ -48,7 +53,9 @@ func (wfm *Store) GetInstance(name, encodedData string) (*Instance, error) {
 	return wfDef.defaultInstance, err
 }
 
-func (wfm *Store) GetDefinition(name string) *versionOrWorkflowDef {
+// UnsafeGetDefinition is used by the agent, and thus must be exported. But a normal user of the library shouldn't use this
+// directly.
+func (wfm *Store) UnsafeGetDefinition(name string) *versionOrWorkflowDef {
 
 	wfm.mu.RLock()
 	def := wfm.workflows[name]
@@ -58,7 +65,7 @@ func (wfm *Store) GetDefinition(name string) *versionOrWorkflowDef {
 }
 
 func (wfm *Store) setDefinition(name string, workflow *Definition) {
-	if wfm.GetDefinition(name) != nil {
+	if wfm.UnsafeGetDefinition(name) != nil {
 		panic(fmt.Sprint("workflowDef definition with name '", name, "' already exists"))
 	}
 	wfm.mu.Lock()
@@ -69,7 +76,7 @@ func (wfm *Store) setDefinition(name string, workflow *Definition) {
 }
 
 func (wfm *Store) setVersionDef(name string, versionDef *VersionDefinition) {
-	if wfm.GetDefinition(name) != nil {
+	if wfm.UnsafeGetDefinition(name) != nil {
 		panic(fmt.Sprint("workflowDef definition with name '", name, "' already exists"))
 	}
 	wfm.mu.Lock()

@@ -16,28 +16,28 @@ func (u *Unserializable) Init(err error) {
 	u.Error = err
 }
 
-func (u *Unserializable) Handle() (interface{}, error){
+func (u *Unserializable) Handle() (interface{}, error) {
 	return nil, u.Error
 }
 
 type TestErrorType struct {
 	Message string
-	Prefix string
+	Prefix  string
 }
 
-func (tet TestErrorType) Error() string{
+func (tet TestErrorType) Error() string {
 	return tet.Prefix + tet.Message
 }
 
 var _ = Describe("Workflow", func() {
-	Context("When creating a workflow with unserializable input", func (){
-		It("should panic", func(){
+	Context("When creating a workflow with unserializable input", func() {
+		It("should panic", func() {
 
-			defer func(){
+			defer func() {
 				r := recover()
 				Expect(r).To(Equal("workflow: must be able to json unmarshal into the handler type... json: cannot unmarshal object into Go struct field Unserializable.Error of type error"))
 			}()
-			UnserializableWorkflow.New(TestErrorType{Message: "test error message", Prefix: "test: ",})
+			UnserializableWorkflow.New(TestErrorType{Message: "test error message", Prefix: "test: "})
 		})
 	})
 })

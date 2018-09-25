@@ -6,8 +6,6 @@ import (
 	"net/http"
 )
 
-//todo: figure out what to do with errors
-
 var client = http.Client{
 	Transport: &http.Transport{
 		DisableKeepAlives: true,

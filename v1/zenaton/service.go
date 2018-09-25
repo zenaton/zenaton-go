@@ -1,10 +1,9 @@
 package zenaton
 
 import (
-	"github.com/zenaton/zenaton-go/v1/zenaton/client"
-	"github.com/zenaton/zenaton-go/v1/zenaton/engine"
 	"github.com/zenaton/zenaton-go/v1/zenaton/errors"
-	"github.com/zenaton/zenaton-go/v1/zenaton/interfaces"
+	"github.com/zenaton/zenaton-go/v1/zenaton/internal/client"
+	"github.com/zenaton/zenaton-go/v1/zenaton/internal/engine"
 	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
 	"github.com/zenaton/zenaton-go/v1/zenaton/task"
 	"github.com/zenaton/zenaton-go/v1/zenaton/workflow"
@@ -39,7 +38,7 @@ func NewService() *Service {
 		Client:          client.NewClient(true),
 		Engine:          engine.NewEngine(),
 		Serializer:      &serializer.Serializer{},
-		WorkflowManager: workflow.Manager,
+		WorkflowManager: workflow.UnsafeManager,
 		TaskManager:     task.Manager,
 		Errors: Errors{
 			ScheduledBoxError:    errors.ScheduledBoxError,
@@ -56,5 +55,5 @@ func InitClient(appID, apiToken, appEnv string) {
 type Workflow = workflow.Instance
 type Task = task.Instance
 type Wait = task.WaitTask
-type Job = interfaces.Job
+type Job = engine.Job
 type Processor = engine.Processor

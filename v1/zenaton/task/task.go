@@ -8,8 +8,8 @@ import (
 	"fmt"
 
 	"errors"
-	"github.com/zenaton/zenaton-go/v1/zenaton/engine"
 	"github.com/zenaton/zenaton-go/v1/zenaton/interfaces"
+	"github.com/zenaton/zenaton-go/v1/zenaton/internal/engine"
 	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
 )
 
@@ -139,11 +139,12 @@ func newInstance(name string, h interfaces.Handler) *Instance {
 
 func (i *Instance) GetName() string { return i.name }
 
-func (i *Instance) GetData() interface{} { return i.Handler }
+func (i *Instance) GetData() interfaces.Handler { return i.Handler }
 
-func (i *Instance) Async() error {
-	i.Handler.Handle()
-	return nil
+func (i Instance) LaunchInfo() engine.LaunchInfo {
+	return engine.LaunchInfo{
+		Type: "task",
+	}
 }
 
 type MaxProcessingTimer interface {
@@ -231,7 +232,7 @@ func outputFromSerialized(to interface{}, from string) error {
 
 func (i *Instance) Execute() *taskExecution {
 
-	outputValues, serializedValues, errs := engine.NewEngine().Execute([]interfaces.Job{i})
+	outputValues, serializedValues, errs := engine.NewEngine().Execute([]engine.Job{i})
 
 	var ex taskExecution
 
@@ -249,7 +250,7 @@ func (i *Instance) Execute() *taskExecution {
 
 func (i *Instance) Dispatch() {
 	e := engine.NewEngine()
-	e.Dispatch([]interfaces.Job{i})
+	e.Dispatch([]engine.Job{i})
 }
 
 type parallelExecution struct {
@@ -299,7 +300,7 @@ type Parallel []*Instance
 
 func (ts Parallel) Dispatch() {
 	e := engine.NewEngine()
-	var jobs []interfaces.Job
+	var jobs []engine.Job
 	for _, task := range ts {
 		jobs = append(jobs, task)
 	}
@@ -309,7 +310,7 @@ func (ts Parallel) Dispatch() {
 func (ts Parallel) Execute() *parallelExecution {
 
 	e := engine.NewEngine()
-	var jobs []interfaces.Job
+	var jobs []engine.Job
 	for _, task := range ts {
 		jobs = append(jobs, task)
 	}
