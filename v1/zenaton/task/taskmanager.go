@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-var Manager = &Store{
+var UnsafeManager = &Store{
 	tasks: make(map[string]*Definition),
 	mu:    &sync.RWMutex{},
 }
@@ -18,7 +18,7 @@ type Store struct {
 
 func (s *Store) setDefinition(name string, tt *Definition) {
 	// check that this task does not exist yet
-	if s.GetDefinition(name) != nil {
+	if s.UnsafeGetDefinition(name) != nil {
 		panic(fmt.Sprint("Instance definition with name '", name, "' already exists"))
 	}
 
@@ -28,17 +28,17 @@ func (s *Store) setDefinition(name string, tt *Definition) {
 
 }
 
-func (s *Store) GetDefinition(name string) *Definition {
+func (s *Store) UnsafeGetDefinition(name string) *Definition {
 	s.mu.RLock()
 	t := s.tasks[name]
 	s.mu.RUnlock()
 	return t
 }
 
-func (s *Store) GetInstance(name, encodedData string) *Instance {
+func (s *Store) UnsafeGetInstance(name, encodedData string) *Instance {
 
 	// get task class
-	tt := s.GetDefinition(name)
+	tt := s.UnsafeGetDefinition(name)
 
 	// unserialize data
 	err := serializer.Decode(encodedData, tt.defaultTask.Handler)

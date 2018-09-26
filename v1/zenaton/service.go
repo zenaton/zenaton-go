@@ -39,7 +39,7 @@ func NewService() *Service {
 		Engine:          engine.NewEngine(),
 		Serializer:      &serializer.Serializer{},
 		WorkflowManager: workflow.UnsafeManager,
-		TaskManager:     task.Manager,
+		TaskManager:     task.UnsafeManager,
 		Errors: Errors{
 			ScheduledBoxError:    errors.ScheduledBoxError,
 			ExternalZenatonError: errors.ExternalZenatonError,

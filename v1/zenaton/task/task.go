@@ -55,7 +55,7 @@ func NewCustom(name string, h interfaces.Handler) *Definition {
 		taskT.initFunc = initFunc
 	}
 
-	Manager.setDefinition(taskT.name, &taskT)
+	UnsafeManager.setDefinition(taskT.name, &taskT)
 	return &taskT
 }
 
