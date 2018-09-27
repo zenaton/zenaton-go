@@ -2,7 +2,7 @@
 
 This Zenaton library for Go lets you code and launch workflows using Zenaton platform. You can sign up for an account at [https://zenaton.com](http://zenaton.com)
 
-**DISCLAIMER** The go library is currently in public beta. Please open an
+**DISCLAIMER** The go library is currently in public alpha. Please open an
 issue if you find any bugs.
 
 ## Requirements
