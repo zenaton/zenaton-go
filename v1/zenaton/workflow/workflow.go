@@ -137,14 +137,14 @@ func validateHandler(value interface{}) {
 
 	jsonV, err := json.Marshal(value)
 	if err != nil {
-		panic("handler type '" + name + "' must be able to be marshaled to json. " + err.Error())
+		panic("workflow: Handler type '" + name + "' must be able to be marshaled to json. " + err.Error())
 	}
 
 	newV := reflect.New(reflect.TypeOf(value)).Interface()
 
 	err = json.Unmarshal(jsonV, newV)
 	if err != nil {
-		panic("handler type '" + name + "' must be able to be unmarshaled from json. " + err.Error())
+		panic("workflow: Handler type '" + name + "' must be able to be unmarshaled from json. " + err.Error())
 	}
 }
 
@@ -160,10 +160,12 @@ func (d *Definition) WhereID(id string) *QueryBuilder {
 type Instance struct {
 	name string
 	engine.Handler
-	OnEventer interface{OnEvent(string, interface{})}
+	OnEventer
 	canonical string
 	id        string
 }
+
+type OnEventer interface{OnEvent(string, interface{})}
 
 // New returns an Instance. You must first have a workflow definition (created with New or NewCustom). If your Handler
 // implementation has an Init() method, you can pass arguments to New which will then be passed to the Init() method.
@@ -273,13 +275,9 @@ func (i Instance) LaunchInfo() engine.LaunchInfo {
 	}
 }
 
-type ider interface {
-	ID() string
-}
-
 // GetCustomID retrieves an Instance ID. This will be "" if you don't have a ID() string method in your workflow
 func (i *Instance) GetCustomID() string {
-	ider, ok := i.Handler.(ider)
+	ider, ok := i.Handler.(interface{ID()string})
 	if ok {
 		return ider.ID()
 	}

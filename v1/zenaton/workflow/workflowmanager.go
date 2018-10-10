@@ -7,7 +7,8 @@ import (
 	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
 )
 
-type versionOrWorkflowDef struct {
+// VersionOrWorkflowDef contains either a workflowDef or a versionDef but not both
+type VersionOrWorkflowDef struct {
 	versionDef  *VersionDefinition
 	workflowDef *Definition
 }
@@ -15,7 +16,7 @@ type versionOrWorkflowDef struct {
 // UnsafeManager is used by the agent, and thus must be exported. But a normal user of the library shouldn't use this
 // directly.
 var UnsafeManager = &Store{
-	workflows: make(map[string]*versionOrWorkflowDef),
+	workflows: make(map[string]*VersionOrWorkflowDef),
 	mu:        &sync.RWMutex{},
 }
 
@@ -23,13 +24,13 @@ var UnsafeManager = &Store{
 // It also will be used by the agent to be able take a workflow name (as well as any workflow data if it exists) and produce an
 // Instance of that workflow.
 type Store struct {
-	workflows map[string]*versionOrWorkflowDef
+	workflows map[string]*VersionOrWorkflowDef
 	mu        *sync.RWMutex
 }
 
 // UnsafeGetDefinition is used by the agent, and thus must be exported. But a normal user of the library shouldn't use this
 // directly.
-func (wfm *Store) UnsafeGetDefinition(name string) *versionOrWorkflowDef {
+func (wfm *Store) UnsafeGetDefinition(name string) *VersionOrWorkflowDef {
 
 	wfm.mu.RLock()
 	def := wfm.workflows[name]
@@ -68,10 +69,10 @@ func (wfm *Store) UnsafeGetInstance(name, encodedData string) (*Instance, error)
 
 func (wfm *Store) setDefinition(name string, workflow *Definition) {
 	if wfm.UnsafeGetDefinition(name) != nil {
-		panic(fmt.Sprint("workflowDef definition with name '", name, "' already exists"))
+		panic(fmt.Sprint("workflow definition with name '", name, "' already exists"))
 	}
 	wfm.mu.Lock()
-	wfm.workflows[name] = &versionOrWorkflowDef{
+	wfm.workflows[name] = &VersionOrWorkflowDef{
 		workflowDef: workflow,
 	}
 	wfm.mu.Unlock()
@@ -79,10 +80,10 @@ func (wfm *Store) setDefinition(name string, workflow *Definition) {
 
 func (wfm *Store) setVersionDef(name string, versionDef *VersionDefinition) {
 	if wfm.UnsafeGetDefinition(name) != nil {
-		panic(fmt.Sprint("workflowDef definition with name '", name, "' already exists"))
+		panic(fmt.Sprint("workflow definition with name '", name, "' already exists"))
 	}
 	wfm.mu.Lock()
-	wfm.workflows[name] = &versionOrWorkflowDef{
+	wfm.workflows[name] = &VersionOrWorkflowDef{
 		versionDef: versionDef,
 	}
 	wfm.mu.Unlock()

@@ -51,7 +51,7 @@ func createServer(port int, idleTime time.Duration) error {
 		Handler: http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
 				if _, err := w.Write([]byte(`{"key":"value"}`)); err != nil {
-					panic(fmt.Sprint("error writing to client: %s", err))
+					panic(fmt.Sprintf("error writing to client: %s", err))
 				}
 			},
 		),
