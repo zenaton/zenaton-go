@@ -9,7 +9,11 @@ import (
 	"github.com/zenaton/zenaton-go/v1/zenaton/workflow"
 )
 
-type Service struct {
+// UnsafeService contains many things that the agent needs to operate.
+// For example, when defining a new workflow Definition, the definition will be stored in the WorkflowManager.
+// The agent will use the WorkflowManager to retrieve a workflow Definition given a workflow name.
+type UnsafeService struct {
+	// None of these Values should be used directly and can lead to unpredicted behaviors.
 	Serializer      *serializer.Serializer
 	Client          *client.Client
 	Engine          *engine.Engine
@@ -18,23 +22,10 @@ type Service struct {
 	Errors          Errors
 }
 
-// Errors is provided so that the agent can use the Errors package without the user of the library having to re-export
-// the errors package
-type Errors struct {
-	ScheduledBoxError    string
-	ExternalZenatonError string
-	InternalZenatonError string
-}
-
-func (e *Errors) New(name, message string) errors.ZenatonError {
-	return errors.NewWithOffset(name, message, 4)
-}
-func (e *Errors) Wrap(name string, err error) errors.ZenatonError {
-	return errors.WrapWithOffset(name, err, 4)
-}
-
-func NewService() *Service {
-	return &Service{
+// NewService creates a new Zenaton service.
+// In your boot file, you must have this line (exactly): "var Service = zenaton.NewService()"
+func NewService() *UnsafeService {
+	return &UnsafeService{
 		Client:          client.NewClient(true),
 		Engine:          engine.NewEngine(),
 		Serializer:      &serializer.Serializer{},
@@ -48,12 +39,38 @@ func NewService() *Service {
 	}
 }
 
+// InitClient will initialize the Zenaton client with your credentials and app env.
 func InitClient(appID, apiToken, appEnv string) {
 	client.InitClient(appID, apiToken, appEnv)
 }
 
+// Errors is provided so that the agent can use the Errors package without the user of the library having to re-export
+// the errors package
+type Errors struct {
+	ScheduledBoxError    string
+	ExternalZenatonError string
+	InternalZenatonError string
+}
+
+func (e *Errors) New(name, message string) errors.ZenatonError {
+	return errors.NewWithOffset(name, message, 4)
+}
+
+func (e *Errors) Wrap(name string, err error) errors.ZenatonError {
+	return errors.WrapWithOffset(name, err, 4)
+}
+
+// Workflow aliases a workflow.Instance
 type Workflow = workflow.Instance
+
+// Task aliases a task.Instance
 type Task = task.Instance
+
+// Wait aliases a task.WaitTask
 type Wait = task.WaitTask
+
+// Job aliases a engine.Job
 type Job = engine.Job
+
+// Processor aliases a engine.Processor
 type Processor = engine.Processor

@@ -6,11 +6,16 @@ import (
 	"sync"
 )
 
+// UnsafeManager is used by the agent, and thus must be exported. But a normal user of the library shouldn't use this
+// directly.
 var UnsafeManager = &Store{
 	tasks: make(map[string]*Definition),
 	mu:    &sync.RWMutex{},
 }
 
+// Store is a thread-safe store of task Definitions. This is used to insure that no two tasks can have the same name.
+// It also will be used by the agent to be able take a task name (as well as any task data if it exists) and produce an
+// Instance of that task.
 type Store struct {
 	tasks map[string]*Definition
 	mu    *sync.RWMutex
@@ -28,6 +33,8 @@ func (s *Store) setDefinition(name string, tt *Definition) {
 
 }
 
+// UnsafeGetDefinition is used by the agent, and thus must be exported. But a normal user of the library shouldn't use this
+// directly. UnsafeGetDefinition takes a name, and retrieves the corresponding task Definition from the store.
 func (s *Store) UnsafeGetDefinition(name string) *Definition {
 	s.mu.RLock()
 	t := s.tasks[name]
@@ -35,6 +42,8 @@ func (s *Store) UnsafeGetDefinition(name string) *Definition {
 	return t
 }
 
+// UnsafeGetInstance is used by the agent, and thus must be exported. But a normal user of the library shouldn't use this
+// directly. UnsafeGetInstance takes a name of a task, and the task's data, and can create an Instance the task.
 func (s *Store) UnsafeGetInstance(name, encodedData string) *Instance {
 
 	// get task class

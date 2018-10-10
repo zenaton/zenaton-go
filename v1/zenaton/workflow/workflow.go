@@ -19,12 +19,11 @@ import (
 
 	"encoding/json"
 
-	"github.com/zenaton/zenaton-go/v1/zenaton/interfaces"
 	"github.com/zenaton/zenaton-go/v1/zenaton/internal/engine"
 )
 
 // Definition is the workflow definition. From a definition, you can create workflow instances with *Definition.New().
-// Any two workflow Definitions should not have the same name.
+// Any two workflow Definitions cannot have the same name.
 type Definition struct {
 	name            string
 	defaultInstance *Instance
@@ -33,7 +32,7 @@ type Definition struct {
 
 // New is the simpler way to create a new workflow Definition. You must provide a name and a handle function of the form:
 // func () (interface{}, error). New is meant for simpler workflow definitions that don't need to keep track of state, have event handlers etc...
-// For more options, us NewCustom instead.
+// For more options, use NewCustom instead.
 // For example:
 //
 //			var SimpleWorkflow = workflow.New("SimpleWorkflow",
@@ -54,8 +53,9 @@ func (dh *defaultHandler) Handle() (interface{}, error) {
 	return dh.handlerFunc()
 }
 
-// NewCustom creates a new workflow Definition. It takes a name and an instance of your type implements the Handler Interface.
+// NewCustom creates a new workflow Definition. It takes a name and an instance of your type that implements the Handler Interface.
 // The Handler interface has one method: Handle() (interface{}, error).
+// For a simpler way to create a workflow Definition, use New.
 //
 // You can also optionally provide other methods:
 // 		1) an Init method
@@ -89,10 +89,6 @@ func (dh *defaultHandler) Handle() (interface{}, error) {
 //			Note: an event is marshaled into and unmarshaled from json. This means that an event will contain the default
 //          unmarshaled json types. The default unmarshaled type for structs or maps is map[string]interface{}. You can handle non-default types by sending the event as a json-encoded string and unmarshaling it in the OnEvent functio
 //
-//
-//
-// For a simpler way to create a workflow Definition, use New.
-//
 // For example:
 //
 //		var WelcomeWorkflow = workflow.NewCustom("WelcomeWorkflow", &Welcome{})
@@ -112,7 +108,7 @@ func (dh *defaultHandler) Handle() (interface{}, error) {
 //			SendWelcomeEmail(w.Email).Execute()
 //			IntroduceUserThroughSlack(w.SlackID).Execute()
 //		}
-func NewCustom(name string, h interfaces.Handler) *Definition {
+func NewCustom(name string, h engine.Handler) *Definition {
 
 	rv := reflect.ValueOf(h)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
@@ -163,8 +159,8 @@ func (d *Definition) WhereID(id string) *QueryBuilder {
 // are runnable with Dispatch().
 type Instance struct {
 	name string
-	interfaces.Handler
-	interfaces.OnEventer
+	engine.Handler
+	OnEventer interface{OnEvent(string, interface{})}
 	canonical string
 	id        string
 }
@@ -202,12 +198,6 @@ func (d *Definition) New(args ...interface{}) *Instance {
 	return d.defaultInstance
 }
 
-// Dispatch launches a workflow asynchronously.
-func (i *Instance) Dispatch() {
-	e := engine.NewEngine()
-	e.Dispatch([]engine.Job{i})
-}
-
 func (d *Definition) callInit(args []interface{}) {
 	//here we recover the panic just to add some more helpful information, then we re-panic
 	defer func() {
@@ -226,6 +216,12 @@ func (d *Definition) callInit(args []interface{}) {
 	d.initFunc.Call(values)
 }
 
+// Dispatch launches a workflow asynchronously.
+func (i *Instance) Dispatch() {
+	e := engine.NewEngine()
+	e.Dispatch([]engine.Job{i})
+}
+
 func validateInit(value interface{}) (reflect.Value, bool) {
 
 	rt := reflect.TypeOf(value)
@@ -238,7 +234,7 @@ func validateInit(value interface{}) (reflect.Value, bool) {
 	return initMethod.Func, true
 }
 
-func newInstance(name string, h interfaces.Handler) *Instance {
+func newInstance(name string, h engine.Handler) *Instance {
 
 	i := &Instance{
 		name:    name,
@@ -258,10 +254,10 @@ func newInstance(name string, h interfaces.Handler) *Instance {
 
 // GetData allows you to retrieve the underlying Handler implementation from a workflow Instance
 // For example:
-// 			WelcomeFlow.whereID(email).Find().GetData().(*Welcome)
+// 			WelcomeFlow.WhereID(email).Find().GetData().(*Welcome)
 // GetData returns a Handler interface, so you can do a type assertion to your base Type if you like.
 // then you can inspect the data associated with your Welcome type (in this example).
-func (i Instance) GetData() interfaces.Handler { return i.Handler }
+func (i Instance) GetData() engine.Handler { return i.Handler }
 
 // GetName retrieves the name of an Instance. This is used in the agent code, so must be exported.
 func (i Instance) GetName() string { return i.name }
@@ -277,9 +273,13 @@ func (i Instance) LaunchInfo() engine.LaunchInfo {
 	}
 }
 
+type ider interface {
+	ID() string
+}
+
 // GetCustomID retrieves an Instance ID. This will be "" if you don't have a ID() string method in your workflow
 func (i *Instance) GetCustomID() string {
-	ider, ok := i.Handler.(interfaces.IDer)
+	ider, ok := i.Handler.(ider)
 	if ok {
 		return ider.ID()
 	}

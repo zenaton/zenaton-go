@@ -19,10 +19,23 @@ var UnsafeManager = &Store{
 	mu:        &sync.RWMutex{},
 }
 
-// Store holds all workflow Definitions.
+// Store is a thread-safe store of workflow Definitions. This is used to insure that no two workflows can have the same name.
+// It also will be used by the agent to be able take a workflow name (as well as any workflow data if it exists) and produce an
+// Instance of that workflow.
 type Store struct {
 	workflows map[string]*versionOrWorkflowDef
 	mu        *sync.RWMutex
+}
+
+// UnsafeGetDefinition is used by the agent, and thus must be exported. But a normal user of the library shouldn't use this
+// directly.
+func (wfm *Store) UnsafeGetDefinition(name string) *versionOrWorkflowDef {
+
+	wfm.mu.RLock()
+	def := wfm.workflows[name]
+	wfm.mu.RUnlock()
+
+	return def
 }
 
 // UnsafeGetInstance is used by the agent, and thus must be exported. But a normal user of the library shouldn't use this
@@ -51,17 +64,6 @@ func (wfm *Store) UnsafeGetInstance(name, encodedData string) (*Instance, error)
 	err := serializer.Decode(encodedData, wfDef.defaultInstance.Handler)
 
 	return wfDef.defaultInstance, err
-}
-
-// UnsafeGetDefinition is used by the agent, and thus must be exported. But a normal user of the library shouldn't use this
-// directly.
-func (wfm *Store) UnsafeGetDefinition(name string) *versionOrWorkflowDef {
-
-	wfm.mu.RLock()
-	def := wfm.workflows[name]
-	wfm.mu.RUnlock()
-
-	return def
 }
 
 func (wfm *Store) setDefinition(name string, workflow *Definition) {

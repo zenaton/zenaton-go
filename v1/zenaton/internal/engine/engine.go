@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"github.com/zenaton/zenaton-go/v1/zenaton/interfaces"
 	"github.com/zenaton/zenaton-go/v1/zenaton/internal/client"
 )
 
@@ -30,11 +29,15 @@ type LaunchInfo struct {
 	Data      interface{}
 }
 
+type Handler interface {
+	Handle() (interface{}, error)
+}
+
 type Job interface {
 	Handle() (interface{}, error)
 	LaunchInfo() LaunchInfo
 	GetName() string
-	GetData() interfaces.Handler
+	GetData() Handler
 }
 
 func (e *Engine) Execute(jobs []Job) ([]interface{}, []string, []error) {
