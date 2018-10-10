@@ -3,8 +3,8 @@ package workflows
 import (
 	"fmt"
 
-	"github.com/zenaton/integration/go/tasks"
-	"github.com/zenaton/integration/go/tasks/log"
+	"github.com/zenaton/zenaton-go/integration/go/tasks"
+	"github.com/zenaton/zenaton-go/integration/go/tasks/log"
 	"github.com/zenaton/zenaton-go/v1/zenaton/errors"
 	"github.com/zenaton/zenaton-go/v1/zenaton/task"
 	"github.com/zenaton/zenaton-go/v1/zenaton/workflow"

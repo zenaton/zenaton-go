@@ -2,7 +2,7 @@ package main
 
 import (
 	_ "github.com/zenaton/examples-go" // initialize zenaton client with credentials
-	"github.com/zenaton/integration/go/workflows"
+	"github.com/zenaton/zenaton-go/integration/go/workflows"
 )
 
 func main() {

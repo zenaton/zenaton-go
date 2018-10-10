@@ -14,10 +14,10 @@ import (
 	// (1)
 	// if this project is in your GOPATH, make sure to have imports that start from your GOPATH.
 	// if this project is not in your GOPATH, then you can use relative imports here
-	_ "github.com/zenaton/integration/go/examples-go/workflows"
-	_ "github.com/zenaton/integration/go/workflows"
+	_ "github.com/zenaton/zenaton-go/integration/go/examples-go/workflows"
+	_ "github.com/zenaton/zenaton-go/integration/go/workflows"
 	// (2)
-	"github.com/zenaton/integration/go/client"
+	"github.com/zenaton/zenaton-go/integration/go/client"
 	"github.com/zenaton/zenaton-go/v1/zenaton"
 )
 

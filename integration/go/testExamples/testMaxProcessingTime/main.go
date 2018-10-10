@@ -3,8 +3,8 @@ package main
 import (
 	"time"
 
-	_ "github.com/zenaton/integration/go/client" // initialize zenaton client with credentials
-	"github.com/zenaton/integration/go/workflows"
+	_ "github.com/zenaton/zenaton-go/integration/go/client" // initialize zenaton client with credentials
+	"github.com/zenaton/zenaton-go/integration/go/workflows"
 )
 
 func main() {
