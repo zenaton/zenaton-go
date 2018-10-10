@@ -10,3 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - CircleCI
 - Changelog.
+- unit tests for worklow package
+
+### Changed
+- Changed unsafe exported names to indicate that they are not safe
