@@ -10,10 +10,9 @@ import (
 	"net/http"
 	"os"
 	"time"
-
 )
 
-var _ = BeforeSuite(func(){
+var _ = BeforeSuite(func() {
 	os.Setenv("ZENATON_LOG_LEVEL", "0")
 	createServer(8080, 100*time.Microsecond)
 })
@@ -47,13 +46,12 @@ var _ = Describe("http", func() {
 	})
 })
 
-
 func createServer(port int, idleTime time.Duration) error {
 	server := &http.Server{
 		Handler: http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
 				if _, err := w.Write([]byte(`{"key":"value"}`)); err != nil {
-					panic(fmt.Sprint("error writing to client: %s", err))
+					panic(fmt.Sprintf("error writing to client: %s", err))
 				}
 			},
 		),
@@ -67,10 +65,10 @@ func createServer(port int, idleTime time.Duration) error {
 
 	go func() {
 		if err := server.Serve(listener); err != nil {
-			panic(fmt.Sprint("error serving: %s", err))
+			panic(fmt.Sprint("error serving: ", err))
 		}
 		if err := listener.Close(); err != nil {
-			panic(fmt.Sprint("error closing listener: %s", err))
+			panic(fmt.Sprint("error closing listener: ", err))
 		}
 	}()
 

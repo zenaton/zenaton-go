@@ -1,4 +1,5 @@
-package serializer
+package serializer_test
+
 
 import (
 	. "github.com/onsi/ginkgo"
