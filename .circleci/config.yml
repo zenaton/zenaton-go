@@ -22,10 +22,12 @@ jobs:
     - checkout
 
     # specify any bash command here prefixed with `run: `
-    - run: go get github.com/zenaton/examples-go
-    - run: rm -rf $(go env GOPATH)/src/github.com/zenaton/examples-go/vendor $(go env GOPATH)/src/github.com/zenaton/examples-go/Gopkg.lock $(go env GOPATH)/src/github.com/zenaton/examples-go/Gopkg.toml
     - run: go get -v -t -d ./...
-    - run: go install github.com/onsi/ginkgo/ginkgo
+    - run: go get github.com/zenaton/examples-go
+    - run: go get github.com/joho/godotenv
+    - run: go get github.com/twinj/uuid
     # remove vendoring in examples
+    - run: rm -rf $(go env GOPATH)/src/github.com/zenaton/examples-go/vendor $(go env GOPATH)/src/github.com/zenaton/examples-go/Gopkg.lock $(go env GOPATH)/src/github.com/zenaton/examples-go/Gopkg.toml
     - run: curl https://install.zenaton.com | sh
+    - run: go install github.com/onsi/ginkgo/ginkgo
     - run: ginkgo -r -race -cover -failOnPending -randomizeAllSpecs
