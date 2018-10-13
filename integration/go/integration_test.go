@@ -3,6 +3,7 @@ package integration_test
 import (
 	"bytes"
 	"fmt"
+	"github.com/onsi/gomega/types"
 	"go/build"
 	"io/ioutil"
 	"os"
@@ -12,7 +13,6 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/onsi/gomega/types"
 
 	. "github.com/onsi/gomega"
 )
@@ -111,6 +111,7 @@ var table = []entry{
 func TestSetup(t *testing.T) {
 
 	g := NewGomegaWithT(t)
+
 	t.Log("It should set up the log files")
 	{
 		var err error
@@ -228,6 +229,7 @@ func TestSetup(t *testing.T) {
 
 }
 
+
 func TestRunExamples(t *testing.T) {
 	for _, entry := range table {
 		entry := entry //gotcha!
@@ -303,8 +305,8 @@ func TestExamplesOutputs(t *testing.T) {
 	}
 }
 
-// waitForLogs waits in 10 second increments and checks to see if the log file had been updated in that time. If not,
-// it returns.
+//waitForLogs waits in 10 second increments and checks to see if the log file had been updated in that time. If not,
+//it returns.
 func waitForLogs() error {
 	var outFileLogs []byte
 

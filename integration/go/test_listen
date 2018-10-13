@@ -1,0 +1,246 @@
+package main
+
+// did this copy?
+import (
+	"errors"
+	"go/build"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+)
+
+var status string
+
+func main() {
+	args := os.Args[1:]
+
+	status = strings.Split(args[0], "=")[1]
+	bootFile := strings.Split(args[2], "=")[1]
+	bootFile, err := filepath.Abs(bootFile)
+	panicError(err)
+
+	thisFile := thisFilePath()
+
+	defaultDir := strings.Replace(thisFile, "go/default/scripts/test_listen.go", "go/default", -1)
+	targetDir := defaultDir
+
+	if os.Getenv("ZENATON_DO_NOT_COPY") == "" {
+		environmentID := strings.Split(args[4], "=")[1]
+		newDirName := "env-" + environmentID
+		targetDir = copyAgentDirectory(newDirName, defaultDir)
+	}
+
+	replaceFilePath := strings.Replace(thisFile, "scripts/test_listen.go", "scripts/replace.go", -1)
+
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		gopath = build.Default.GOPATH
+	}
+
+	bootImportString := bootImportPath(bootFile, gopath, replaceFilePath)
+
+	targetReplaceFilePath := targetDir + "/scripts/replace.go"
+
+	checkClientLibraryPath(targetReplaceFilePath, bootImportString, status)
+
+	zenatonGoFile := targetDir + "/services/zenaton/zenaton.go"
+	setupZenatonFile(zenatonGoFile, bootFile, bootImportString, gopath)
+
+	newTestListen2 := targetDir + "/scripts/test_listen2.go"
+	runTestListen2(args, newTestListen2)
+}
+
+func copyAgentDirectory(dirName, defaultAgentDir string) string {
+	targetDir := strings.Replace(defaultAgentDir, "go/default", "go/"+dirName, -1)
+
+	err := copyDir(defaultAgentDir, targetDir)
+	panicError(err)
+
+	return targetDir
+}
+
+func copyFile(source string, dest string) (err error) {
+	sourcefile, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+
+	defer sourcefile.Close()
+
+	destfile, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+
+	defer destfile.Close()
+
+	_, err = io.Copy(destfile, sourcefile)
+	if err == nil {
+		sourceinfo, err2 := os.Stat(source)
+		if err2 != nil {
+			err = os.Chmod(dest, sourceinfo.Mode())
+		}
+
+	}
+
+	return
+}
+
+func copyDir(source string, dest string) (err error) {
+
+	// get properties of source dir
+	sourceinfo, err := os.Stat(source)
+	if err != nil {
+		return err
+	}
+
+	// create dest dir
+
+	err = os.MkdirAll(dest, sourceinfo.Mode())
+	if err != nil {
+		return err
+	}
+
+	directory, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+
+	objects, err := directory.Readdir(-1)
+
+	for _, obj := range objects {
+
+		sourcefilepointer := source + "/" + obj.Name()
+
+		destinationfilepointer := dest + "/" + obj.Name()
+
+		if obj.IsDir() {
+			// create sub-directories - recursively
+			err = copyDir(sourcefilepointer, destinationfilepointer)
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			// perform copy
+			err = copyFile(sourcefilepointer, destinationfilepointer)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+	}
+	return
+}
+
+func checkClientLibraryPath(replaceFilePath, bootImportString, status string) {
+
+	addImportToFile(replaceFilePath, bootImportString, `	_ "`)
+
+	libraryPath, err := exec.Command("go", "run", replaceFilePath).CombinedOutput()
+
+	if string(libraryPath) == "" {
+		failure(status, "Unable to load Zenaton library, make sure you are initializing the Zenaton client")
+		panic("unable to load Zenaton library")
+	}
+	if err != nil {
+		panic(string(libraryPath))
+	}
+}
+
+func runTestListen2(originatlArgs []string, newTestListen2 string) {
+	// get set up arguments to execute with test_listen2
+	args := append([]string{newTestListen2}, originatlArgs...)
+	args = append([]string{"run"}, args...)
+
+	//execute test_listen2
+	output, err := exec.Command("go", args...).CombinedOutput()
+	if err != nil {
+		panic(string(output))
+	}
+}
+
+func setupZenatonFile(zenatonGoFile, boot, bootImportPath, gopath string) {
+	// now replace the import in zenaton.go
+	//todo: probably won't work on windows as the slashes are different?
+
+	if strings.HasPrefix(boot, gopath) {
+		addImportToFile(zenatonGoFile, bootImportPath, `	b "`)
+	} else {
+		//todo: probably won't work on windows as the slashes are different?
+		addImportToFile(zenatonGoFile, "../"+bootImportPath, `	b "`)
+	}
+}
+
+func bootImportPath(boot, gopath, bootImportingFile string) string {
+	var bootImportPath string
+
+	//if the boot file is in the gopath
+	if strings.HasPrefix(boot, gopath) {
+		bootImportPath = strings.TrimLeft(boot, gopath)
+		bootImportPath = strings.TrimLeft(bootImportPath, "src/")
+		pieces := strings.Split(bootImportPath, string(os.PathSeparator))
+		bootImportPath = strings.Join(pieces[:len(pieces)-1], string(os.PathSeparator))
+
+	} else {
+		bootImportPath = getRelativeImportPath(bootImportingFile, boot)
+	}
+	return bootImportPath
+}
+
+func panicError(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func thisFilePath() string {
+	//get file path to this file
+	_, thisFilePath, _, ok := runtime.Caller(0)
+	if !ok {
+		panicError(errors.New("not possible to find file path"))
+	}
+	return thisFilePath
+}
+
+func failure(url, msg string) {
+	// must use the standard http package for this, because the services/synchttp uses the zenaton package, which might not be set up yet
+	_, err := http.Post(url, "application/json", strings.NewReader(`{"error": "`+msg+`"}`))
+	panicError(err)
+}
+
+func getRelativeImportPath(importerFile, importedFile string) string {
+	importerPathPieces := strings.Split(importerFile, string(os.PathSeparator))
+	importerPathPieces = importerPathPieces[:len(importerPathPieces)-2]
+	for i := range importerPathPieces {
+		importerPathPieces[i] = ".."
+	}
+
+	relativePathToThisFile := strings.Join(importerPathPieces, string(os.PathSeparator))
+
+	newPathToImportFilePieces := strings.Split(importedFile, string(os.PathSeparator))
+	importPathMinusFilename := strings.Join(newPathToImportFilePieces[:len(newPathToImportFilePieces)-1], string(os.PathSeparator))
+
+	return relativePathToThisFile + importPathMinusFilename
+}
+
+func addImportToFile(file, importPath, identifier string) {
+	replaceFileText, err := ioutil.ReadFile(file)
+	panicError(err)
+
+	lines := strings.Split(string(replaceFileText), "\n")
+
+	for i, line := range lines {
+		if strings.Contains(line, identifier) {
+			lines[i] = identifier + importPath + `"`
+		}
+	}
+
+	newFileContents := strings.Join(lines, "\n")
+	err = ioutil.WriteFile(file, []byte(newFileContents), 0644)
+	panicError(err)
+}

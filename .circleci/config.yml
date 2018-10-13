@@ -32,4 +32,6 @@ jobs:
     # remove vendoring in examples
     - run: rm -rf $(go env GOPATH)/src/github.com/zenaton/examples-go/vendor $(go env GOPATH)/src/github.com/zenaton/examples-go/Gopkg.lock $(go env GOPATH)/src/github.com/zenaton/examples-go/Gopkg.toml
     - run: curl https://install.zenaton.com | sh
+    # take this out when the bug is fixed in the agent
+    - run: cp integration/go/test_listen ~/.zenaton/lib/worker-0.4.4/priv/go/default/scripts/test_listen.go
     - run: ginkgo -r -race -cover -failOnPending -randomizeAllSpecs
