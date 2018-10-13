@@ -311,7 +311,7 @@ func waitForLogs() error {
 	var outFileLogs []byte
 
 	for {
-		time.Sleep(10 * time.Second)
+		time.Sleep(15 * time.Second)
 		newOutFileLogs, err := ioutil.ReadFile("zenaton.out")
 		if err != nil {
 			return err
