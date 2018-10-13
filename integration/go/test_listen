@@ -1,6 +1,5 @@
 package main
 
-// did this copy?
 import (
 	"errors"
 	"go/build"
