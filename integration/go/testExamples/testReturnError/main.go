@@ -5,7 +5,7 @@ import (
 	"github.com/zenaton/zenaton-go/integration/go/workflows"
 )
 
-func init() { client.SetEnv("testReturnError.env") }
+func init() { client.SetEnv("dev-testReturnError") }
 func main() {
 
 	workflows.TestW.New(workflows.Test2{

@@ -23,7 +23,7 @@ import (
 )
 
 func init() {
-	client.SetEnv("")
+	client.SetEnv()
 }
 
 type Workflow = zenaton.Workflow

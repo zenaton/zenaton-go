@@ -10,23 +10,22 @@ import (
 var _ = Describe("Workflow", func() {
 
 	Context("New Definition", func() {
-		Context("When it has the same name as an existing def", func(){
+		Context("When it has the same name as an existing def", func() {
 			It("should panic", func() {
-				workflow.New("testRedundantNameWithNew", func() (interface{}, error) {return nil, nil})
+				workflow.New("testRedundantNameWithNew", func() (interface{}, error) { return nil, nil })
 				defer func() {
 					r := recover()
 					fmt.Println("r: ", r)
 					Expect(r).To(Equal("workflow definition with name 'testRedundantNameWithNew' already exists"))
 				}()
-				workflow.New("testRedundantNameWithNew", func() (interface{}, error) {return nil, nil})
+				workflow.New("testRedundantNameWithNew", func() (interface{}, error) { return nil, nil })
 			})
 		})
 	})
 
+	Context("NewCustom Definition", func() {
 
-	Context ("NewCustom Definition", func() {
-
-		Context("with the same name as an existing def", func(){
+		Context("with the same name as an existing def", func() {
 			It("should panic", func() {
 				workflow.NewCustom("testRedundantNameWithNewCustom", &TestHandler{})
 				defer func() {
@@ -38,7 +37,7 @@ var _ = Describe("Workflow", func() {
 			})
 		})
 
-		Context("without a pointer", func(){
+		Context("without a pointer", func() {
 			It("should panic", func() {
 				defer func() {
 					r := recover()
@@ -49,7 +48,7 @@ var _ = Describe("Workflow", func() {
 			})
 		})
 
-		Context("with an unserializable Handler type", func(){
+		Context("with an unserializable Handler type", func() {
 			It("should panic", func() {
 
 				defer func() {
@@ -62,8 +61,7 @@ var _ = Describe("Workflow", func() {
 		})
 	})
 
-
-	Context("New Instance", func(){
+	Context("New Instance", func() {
 
 		Context("with unserializable input", func() {
 			It("should panic", func() {
@@ -79,11 +77,12 @@ var _ = Describe("Workflow", func() {
 })
 
 type unserializableHandler struct{ Func func() }
-func (u *unserializableHandler) Handle() (interface{}, error){return nil, nil}
 
+func (u *unserializableHandler) Handle() (interface{}, error) { return nil, nil }
 
 type TestHandler struct{}
-func (th TestHandler) Handle() (interface{}, error) {return nil, nil}
+
+func (th TestHandler) Handle() (interface{}, error) { return nil, nil }
 
 var UnserializableWorkflow = workflow.NewCustom("UnserializableWorkflow", &Unserializable{})
 

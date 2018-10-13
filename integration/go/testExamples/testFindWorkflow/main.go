@@ -6,9 +6,8 @@ import (
 	"time"
 )
 
-func init() { client.SetEnv("testFindWorkflow.env") }
+func init() { client.SetEnv("dev-testFindWorkflow") }
 func main() {
-
 
 	wf, err := workflows.TestW.WhereID("testFind").Find()
 	if err != nil {

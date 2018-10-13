@@ -6,7 +6,7 @@ import (
 	"github.com/zenaton/zenaton-go/integration/go/workflows"
 )
 
-func init() { client.SetEnv("testUnserializableHandlerType.env") }
+func init() { client.SetEnv("dev-testUnserializableHandlerType") }
 func main() {
 	//workflows.TestW.WhereID("MyID").Kill()
 	t := tasks.TestTask.New()

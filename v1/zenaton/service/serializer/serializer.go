@@ -452,13 +452,10 @@ func (s *serializer) decodeMap(id int, keys interface{}, values interface{}, v r
 	case reflect.Interface:
 		newMap := make(map[interface{}]interface{})
 		newV = reflect.ValueOf(&newMap)
-		//fmt.Println("interface(((((((((((((((((((((")
 	default:
-		//fmt.Println("default(((((((((((((((((((((")
 		newV = v
 	}
 
-	//fmt.Println("the thing:::::::::: ", newV, newV.Kind())
 	s.decoded = append(s.decoded, newV)
 	newV = indirect(newV)
 	if newV.IsNil() {
@@ -467,8 +464,6 @@ func (s *serializer) decodeMap(id int, keys interface{}, values interface{}, v r
 
 	for i, k := range ks {
 		v := vs[i]
-
-		//fmt.Println("newV.Type()", newV.Type())
 
 		newKey := reflect.New(newV.Type().Key()).Elem()
 		newValue := reflect.New(newV.Type().Elem()).Elem()
