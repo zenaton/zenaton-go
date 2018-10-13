@@ -112,38 +112,6 @@ func TestSetup(t *testing.T) {
 
 	g := NewGomegaWithT(t)
 
-	t.Log("It should set up the log files")
-	{
-		var err error
-		outFile, err = os.OpenFile("zenaton.out", os.O_RDWR, 0660)
-		switch err.(type) {
-		case *os.PathError:
-			//this is ok
-			outFile, err = os.Create("zenaton.out")
-			g.Expect(err).NotTo(HaveOccurred())
-		default:
-			err = outFile.Truncate(0)
-			g.Expect(err).NotTo(HaveOccurred())
-		}
-
-		errFile, err = os.OpenFile("zenaton.err", os.O_RDWR, 0660)
-		switch err.(type) {
-		case *os.PathError:
-			//this is ok
-			errFile, err = os.Create("zenaton.err")
-			g.Expect(err).NotTo(HaveOccurred())
-
-		default:
-			err = errFile.Truncate(0)
-			g.Expect(err).NotTo(HaveOccurred())
-		}
-
-		logFile, err := os.OpenFile("zenaton.log", os.O_RDWR, 0660)
-		if err == nil {
-			err = logFile.Truncate(0)
-			g.Expect(err).NotTo(HaveOccurred())
-		}
-	}
 
 	t.Log("It Should Copy Examples folder locally")
 	{
@@ -227,6 +195,45 @@ func TestSetup(t *testing.T) {
 		g.Expect(err).NotTo(HaveOccurred())
 	}
 
+	t.Log("It should set up the log files")
+	{
+		// we sleep for 10 seconds after the listen on CircleCI in case we need to process any tasks that were still in the queue.
+		// If so those logs will be added here and we'll have too many logs
+		onCircleCI := os.Getenv("CircleCI")
+		if onCircleCI == "" {
+			time.Sleep(10 * time.Second)
+		}
+
+		var err error
+		outFile, err = os.OpenFile("zenaton.out", os.O_RDWR, 0660)
+		switch err.(type) {
+		case *os.PathError:
+			//this is ok
+			outFile, err = os.Create("zenaton.out")
+			g.Expect(err).NotTo(HaveOccurred())
+		default:
+			err = outFile.Truncate(0)
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+
+		errFile, err = os.OpenFile("zenaton.err", os.O_RDWR, 0660)
+		switch err.(type) {
+		case *os.PathError:
+			//this is ok
+			errFile, err = os.Create("zenaton.err")
+			g.Expect(err).NotTo(HaveOccurred())
+
+		default:
+			err = errFile.Truncate(0)
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+
+		logFile, err := os.OpenFile("zenaton.log", os.O_RDWR, 0660)
+		if err == nil {
+			err = logFile.Truncate(0)
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+	}
 }
 
 
