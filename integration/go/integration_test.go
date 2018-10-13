@@ -3,6 +3,7 @@ package integration_test
 import (
 	"bytes"
 	"fmt"
+	"go/build"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -137,7 +138,7 @@ func TestSetup(t *testing.T) {
 		}
 
 		logFile, err := os.OpenFile("zenaton.log", os.O_RDWR, 0660)
-		if err != nil {
+		if err == nil {
 			err = logFile.Truncate(0)
 			g.Expect(err).NotTo(HaveOccurred())
 		}
@@ -151,9 +152,20 @@ func TestSetup(t *testing.T) {
 		}
 
 		gopath := os.Getenv("GOPATH")
+		if gopath == "" {
+			gopath = build.Default.GOPATH
+		}
+
 		output, err := exec.Command("cp", "-r", gopath+"/src/github.com/zenaton/examples-go", "examples-go").CombinedOutput()
 		if err != nil {
 			fmt.Println("error copying examples-go, output: ", string(output), "err: ", err)
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+
+		output, err = exec.Command("rm", "-rf", "examples-go/vendor", "examples-go/Gopkg.lock", "examples-go/Gopkg.toml").CombinedOutput()
+
+		if err != nil {
+			fmt.Println("error removing vendoring, output: ", string(output), "err: ", err)
 			g.Expect(err).NotTo(HaveOccurred())
 		}
 	}
@@ -184,7 +196,6 @@ func TestSetup(t *testing.T) {
 		g.Expect(err).NotTo(HaveOccurred())
 
 		if !ok {
-
 			env := getEnv()
 			err = ioutil.WriteFile("examples-go/.env", []byte(env), 0644)
 			g.Expect(err).NotTo(HaveOccurred())
@@ -222,9 +233,18 @@ func TestRunExamples(t *testing.T) {
 		entry := entry //gotcha!
 
 		t.Run("", func(st *testing.T) {
-			g := NewGomegaWithT(st)
 			st.Parallel()
-			entry := entry
+			g := NewGomegaWithT(st)
+
+			// updates paths in copied examples so that imports work correctly
+			if entry.exampleDir == "examples-go" {
+				filePath := "examples-go/" + entry.directory + "/main.go"
+				contents, err := ioutil.ReadFile(filePath)
+				g.Expect(err).ToNot(HaveOccurred())
+				newContents := bytes.Replace(contents, []byte("github.com/zenaton/examples-go"), []byte("github.com/zenaton/zenaton-go/integration/go/examples-go"), -1)
+
+				err = ioutil.WriteFile(filePath, newContents, 0660)
+			}
 
 			cmd := exec.Command("go", "run", "-race", "main.go")
 			cmd.Dir = entry.exampleDir + "/" + entry.directory
