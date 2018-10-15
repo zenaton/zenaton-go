@@ -14,5 +14,3 @@ zenaton-go
 
 # test coverage file
 *.coverprofile
-
-examples-go
