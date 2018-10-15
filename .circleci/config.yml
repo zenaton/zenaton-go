@@ -25,6 +25,7 @@ jobs:
         name: Get dependencies
         command: |
           go get github.com/zenaton/examples-go
+          go get github.com/davecgh/go-spew/spew
           go get github.com/joho/godotenv
           go get github.com/twinj/uuid
           go get github.com/onsi/ginkgo/ginkgo
