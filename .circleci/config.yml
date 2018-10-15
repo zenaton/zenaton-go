@@ -30,19 +30,20 @@ jobs:
           go get github.com/onsi/ginkgo/ginkgo
           go install github.com/onsi/ginkgo/ginkgo
           go get github.com/onsi/gomega/...
+
     - run:
-        name: Remove vendored folders from examples-go
-        command: rm -rf $(go env GOPATH)/src/github.com/zenaton/examples-go/vendor $(go env GOPATH)/src/github.com/zenaton/examples-go/Gopkg.lock $(go env GOPATH)/src/github.com/zenaton/examples-go/Gopkg.toml
+        name: Run unit tests
+        command: ginkgo -r -race -cover -failOnPending -randomizeAllSpecs
 
     - run:
         name: Download the agent
         command: curl https://install.zenaton.com | sh
-    - run:
-        name: Run unit tests
-        command: ginkgo -r -race -cover -failOnPending -randomizeAllSpecs
+
+    # take the copy out when agent bug is fixed
     - run:
         name: Run integration tests
         command: |
-          go get github.com/zenaton/agent-integration/...
+          go get github.com/zenaton/agent-integration/go
           cd $(go env GOPATH)/src/github.com/zenaton/agent-integration/go
+          cp test_listen ~/.zenaton/lib/worker-0.4.4/priv/go/default/scripts/test_listen.go
           go test -v
