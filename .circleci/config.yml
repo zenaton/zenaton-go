@@ -21,7 +21,6 @@ jobs:
     steps:
     - checkout
 
-    # specify any bash command here prefixed with `run: `
     - run:
         name: Get dependencies
         command: |
@@ -31,7 +30,6 @@ jobs:
           go get github.com/onsi/ginkgo/ginkgo
           go install github.com/onsi/ginkgo/ginkgo
           go get github.com/onsi/gomega/...
-    # remove vendoring in examples
     - run:
         name: Remove vendored folders from examples-go
         command: rm -rf $(go env GOPATH)/src/github.com/zenaton/examples-go/vendor $(go env GOPATH)/src/github.com/zenaton/examples-go/Gopkg.lock $(go env GOPATH)/src/github.com/zenaton/examples-go/Gopkg.toml
