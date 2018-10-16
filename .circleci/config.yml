@@ -6,7 +6,7 @@ jobs:
   build:
     docker:
     # specify the version
-    - image: circleci/golang:1.9
+    - image: circleci/golang:1.10
 
     # Specify service dependencies here if necessary
     # CircleCI maintains a library of pre-built images
@@ -21,7 +21,30 @@ jobs:
     steps:
     - checkout
 
-    # specify any bash command here prefixed with `run: `
-    - run: go get -v -t -d ./...
-    - run: go install github.com/onsi/ginkgo/ginkgo
-    - run: ginkgo -r -race -cover -failOnPending -randomizeAllSpecs
+    - run:
+        name: Get dependencies
+        command: |
+          go get github.com/zenaton/examples-go
+          go get github.com/davecgh/go-spew/spew
+          go get github.com/joho/godotenv
+          go get github.com/twinj/uuid
+          go get github.com/onsi/ginkgo/ginkgo
+          go install github.com/onsi/ginkgo/ginkgo
+          go get github.com/onsi/gomega/...
+
+    - run:
+        name: Run unit tests
+        command: ginkgo -r -race -cover -failOnPending -randomizeAllSpecs
+
+    - run:
+        name: Download the agent
+        command: curl https://install.zenaton.com | sh
+
+    # take the copy out when agent bug is fixed
+    - run:
+        name: Run integration tests
+        command: |
+          go get github.com/zenaton/agent-integration/go
+          cd $(go env GOPATH)/src/github.com/zenaton/agent-integration/go
+          cp test_listen ~/.zenaton/lib/worker-0.4.4/priv/go/default/scripts/test_listen.go
+          go test -v
