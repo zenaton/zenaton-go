@@ -201,7 +201,13 @@ func (tt *Definition) callInit(args []interface{}) {
 // Dispatch launches a task instance asynchronously.
 func (i *Instance) Dispatch() {
 	e := engine.NewEngine()
-	e.Dispatch([]engine.Job{i})
+	e.Dispatch([]engine.Job{i}, []engine.LaunchInfo{i.launchInfo()})
+}
+
+func (i *Instance) launchInfo() engine.LaunchInfo {
+	return engine.LaunchInfo{
+		Type: "task",
+	}
 }
 
 // Execute launches a task instance synchronously (the workflow will block until this task is done).
@@ -316,152 +322,8 @@ func outputFromSerialized(to interface{}, from string) error {
 	return nil
 }
 
-// Parallel is just a slice of *Instances that can be run in parallel with Execute() or Dispatch().
-type Parallel []*Instance
-
-// Execute will execute a Parallel (a slice of Instances) in parallel and wait for their completion.
-// Execute returns a ParallelExecution which can be used to get the outputs and errors of the tasks executed.
-//
-// For parallel tasks, you will receive a slice of errors. This slice will be nil if no error occurred. If there was
-// an error in one of the parallel tasks, you will receive a slice of the same length as the input tasks, and the index
-// of the task that produced an error will be the same index as the non-nil err in the slice of errors
-//
-//  var a int
-//	var b int
-//
-//	errs := task.Parallel{
-//	    tasks.A.New(),
-//	    tasks.B.New(),
-//	}.Execute().Output(&a, &b)
-//
-//	if errs != nil {
-//	    if errs[0] != nil {
-//	        //  tasks.A error
-//	    }
-//	    if errs[1] != nil {
-//	        //  tasks.B error
-//	    }
-//	}
-//
-// Here, tasks A and B will be executed in parallel, and we wait for all of them to end before continuing. You can
-// retrieve the outputs of these tasks by passing pointers to .Output()
-func (ts Parallel) Execute() ParallelExecution {
-
-	e := engine.NewEngine()
-	var jobs []engine.Job
-	for _, task := range ts {
-		jobs = append(jobs, task)
-	}
-	values, serializedValues, errors := e.Execute(jobs)
-
-	return ParallelExecution{
-		outputValues:     values,
-		serializedValues: serializedValues,
-		errors:           errors,
-	}
-}
-
-// Dispatch will launch the the tasks in parallel and not wait for them to complete before moving on. Thus:
-//
-//		task.Parallel{
-//			tasks.A.New(),
-//			tasks.B.New(),
-//		}.Dispatch()
-//
-// should be equivalent to:
-//
-// 		tasks.A.New().Dispatch()
-// 		tasks.B.New().Dispatch()
-//
-func (ts Parallel) Dispatch() {
-	e := engine.NewEngine()
-	var jobs []engine.Job
-	for _, task := range ts {
-		jobs = append(jobs, task)
-	}
-	e.Dispatch(jobs)
-}
-
-// ParallelExecution represents the outputs and errors of the Parallel tasks.
-// To get the output, use ParallelExecution.Output()
-type ParallelExecution struct {
-	outputValues     []interface{}
-	serializedValues []string
-	errors           []error
-}
-
-// Output gets the output of a Parallel execution
-//
-//
-// For parallel tasks, you will receive a slice of errors. This slice will be nil if no error occurred. If there was
-// an error in one of the parallel tasks, you will receive a slice of the same length as the input tasks, and the index
-// of the task that produced an error will be the same index as the non-nil err in the slice of errors
-//
-//  var a int
-//	var b int
-//
-//	errs := task.Parallel{
-//	    tasks.A.New(),
-//	    tasks.B.New(),
-//	}.Execute().Output(&a, &b)
-//
-//	if errs != nil {
-//	    if errs[0] != nil {
-//	        //  tasks.A error
-//	    }
-//	    if errs[1] != nil {
-//	        //  tasks.B error
-//	    }
-//	}
-//
-// Here, tasks A and B will be executed in parallel, and we wait for all of them to end before continuing. You can
-// retrieve the outputs of these tasks by passing pointers to .Output()
-func (pe ParallelExecution) Output(values ...interface{}) []error {
-
-	if len(values) != len(pe.outputValues) && len(values) != len(pe.serializedValues) {
-		panic(fmt.Sprint("task: number of parallel tasks and return value pointers do not match"))
-	}
-
-	if len(values) == 0 {
-		values = make([]interface{}, len(pe.errors))
-	}
-
-	var errs []error
-
-	if pe.serializedValues != nil {
-		for i := range pe.serializedValues {
-			err := outputFromSerialized(values[i], pe.serializedValues[i])
-			errs = append(errs, err)
-		}
-	} else {
-
-		for i := range pe.outputValues {
-			if values[i] != nil {
-				value := values[0]
-				outputFromInterface(value, pe.outputValues[i])
-			}
-		}
-
-		errs = pe.errors
-	}
-
-	for _, e := range errs {
-		if e != nil {
-			return pe.errors
-		}
-	}
-	return nil
-}
-
 // GetName simply returns the name of the Instance
 func (i *Instance) GetName() string { return i.name }
 
 // GetData allows you to retrieve the underlying handler implementation of a task Instance
 func (i *Instance) GetData() engine.Handler { return i.Handler }
-
-// LaunchInfo returns some information about what type of Instance you have (either a task or a workflow).
-func (i *Instance) LaunchInfo() engine.LaunchInfo {
-	return engine.LaunchInfo{
-		Type: "task",
-	}
-}

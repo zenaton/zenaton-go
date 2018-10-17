@@ -451,11 +451,6 @@ func (w *WaitTask) Handle() (interface{}, error) {
 	return w.task.Handle()
 }
 
-// LaunchInfo is used by the engine to determine the relevant information for dispatching Jobs (tasks or workflows)
-func (w *WaitTask) LaunchInfo() engine.LaunchInfo {
-	return w.task.LaunchInfo()
-}
-
 // GetName will return the name of the task. Here it will always be _Wait.
 func (w *WaitTask) GetName() string {
 	return w.task.GetName()

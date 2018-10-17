@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"sync"
+
 	"github.com/zenaton/zenaton-go/v1/zenaton/internal/client"
 )
 
@@ -35,7 +37,6 @@ type Handler interface {
 
 type Job interface {
 	Handle() (interface{}, error)
-	LaunchInfo() LaunchInfo
 	GetName() string
 	GetData() Handler
 }
@@ -46,12 +47,26 @@ func (e *Engine) Execute(jobs []Job) ([]interface{}, []string, []error) {
 	if e.processor == nil || len(jobs) == 0 {
 		var outputs []interface{}
 		var errs []error
-		for _, job := range jobs {
-			out, err := job.GetData().Handle()
+		mu := &sync.Mutex{}
 
-			errs = append(errs, err)
-			outputs = append(outputs, out)
+		wg := sync.WaitGroup{}
+		for _, job := range jobs {
+
+			job := job //gotcha!
+
+			wg.Add(1)
+			go func() {
+
+				defer wg.Done()
+
+				out, err := job.GetData().Handle()
+				mu.Lock()
+				errs = append(errs, err)
+				outputs = append(outputs, out)
+				mu.Unlock()
+			}()
 		}
+		wg.Wait()
 
 		return outputs, nil, errs
 	}
@@ -60,19 +75,19 @@ func (e *Engine) Execute(jobs []Job) ([]interface{}, []string, []error) {
 	return outputValues, serializedOutputs, errs
 }
 
-func (e *Engine) Dispatch(jobs []Job) {
+func (e *Engine) Dispatch(jobs []Job, launchInfos []LaunchInfo) {
 
 	if e.processor == nil || len(jobs) == 0 {
 
-		for _, job := range jobs {
-			li := job.LaunchInfo()
+		for i, job := range jobs {
+			job := job
+			li := launchInfos[i]
 			if li.Type == "workflow" {
 				client.NewClient(false).StartWorkflow(li.Name, li.Canonical, li.ID, li.Data)
 			} else {
-				job.Handle()
+				go job.Handle()
 			}
 		}
-
 		return
 	}
 

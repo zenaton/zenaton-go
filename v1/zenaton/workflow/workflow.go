@@ -73,7 +73,7 @@ func (dh *defaultHandler) Handle() (interface{}, error) {
 //			To be valid, this ID method MUST be unique (meaning in the same environment, you can not have two running
 // 			instances of the same workflow with the same id). This ID method must have the form: func ID() string
 // 		3) or an OnEvent() method
-//			Workflows instances handle events an OnEvent method that will receive the event object as a parameter. Eg.
+//			Workflow instances handle events an OnEvent method that will receive the event object as a parameter. Eg.
 //				...
 //				func (w *Welcome) OnEvent(name string, event interface{}){
 //					if name == "AddressUpdatedEvent"{
@@ -87,7 +87,9 @@ func (dh *defaultHandler) Handle() (interface{}, error) {
 //			The workflow implementation MUST be idempotent. So the constraints on the OnEvent method are the same as the
 //          handle method (it must implement a logical flow and NOT the tasks themselves.)
 //			Note: an event is marshaled into and unmarshaled from json. This means that an event will contain the default
-//          unmarshaled json types. The default unmarshaled type for structs or maps is map[string]interface{}. You can handle non-default types by sending the event as a json-encoded string and unmarshaling it in the OnEvent functio
+//          unmarshaled json types. The default unmarshaled type for structs or maps is map[string]interface{}.
+// 			You can handle non-default types by sending the event as a json-encoded string and unmarshaling it in the
+// 			OnEvent function
 //
 // For example:
 //
@@ -131,6 +133,19 @@ func NewCustom(name string, h engine.Handler) *Definition {
 	return &def
 }
 
+
+func Dispatch2(interface{Handle()(interface{}, error)}) {
+
+}
+
+func Register(string, interface{Handle()(interface{}, error)}) {
+
+}
+
+func Name(string) {
+
+}
+
 func validateHandler(value interface{}) {
 
 	name := reflect.Indirect(reflect.ValueOf(value)).Type().Name()
@@ -165,6 +180,24 @@ type Instance struct {
 	id        string
 }
 
+// OnEventer has an OnEvent method. By implementing the OnEventer interface, your workflow instance can receive events
+// while it is running. Workflow instances handle events an OnEvent method that will receive the event object as a parameter. Eg.
+//				...
+//				func (w *Welcome) OnEvent(name string, event interface{}){
+//					if name == "AddressUpdatedEvent"{
+//						eventMap = event.(map[string]interface{})
+//						w.Address = eventMap["address"].(string)
+//					}
+//				}
+//				...
+//
+// The OnEvent method is called as soon the event is sent and a agent is available to execute it.
+// The workflow implementation MUST be idempotent. So the constraints on the OnEvent method are the same as the
+// handle method (it must implement a logical flow and NOT the tasks themselves.)
+// Note: an event is marshaled into and unmarshaled from json. This means that an event will contain the default
+// unmarshaled json types. The default unmarshaled type for structs or maps is map[string]interface{}.
+// You can handle non-default types by sending the event as a json-encoded string and unmarshaling it in the
+// OnEvent function
 type OnEventer interface{ OnEvent(string, interface{}) }
 
 // New returns an Instance. You must first have a workflow definition (created with New or NewCustom). If your Handler
@@ -221,7 +254,53 @@ func (d *Definition) callInit(args []interface{}) {
 // Dispatch launches a workflow asynchronously.
 func (i *Instance) Dispatch() {
 	e := engine.NewEngine()
-	e.Dispatch([]engine.Job{i})
+	e.Dispatch([]engine.Job{i}, []engine.LaunchInfo{i.launchInfo()})
+}
+
+func (i Instance) launchInfo() engine.LaunchInfo {
+	return engine.LaunchInfo{
+		Type:      "workflow",
+		Name:      i.name,
+		Canonical: i.canonical,
+		ID:        i.GetCustomID(),
+		Data:      i.Handler,
+	}
+}
+
+// Execution represents the output and error of the workflow.
+type Execution struct {
+	outputValue     interface{}
+	serializedValue string
+	err             error
+}
+
+// Execute launches a workflow instance synchronously, that is, Execute is a blocking function.
+// Execute returns a Execution, which you can use to get the output and error of the workflow.
+// for example:
+//
+// 		var a int
+//		err := exampleWorkflow.New().Execute().Output(&a)
+// 		if err != nil {
+//    		... //handle error
+//		}
+//
+// Note: If you have a custom error type, the information will be lost. Here we just return a standard go error
+// where err.Error() matches the output of the err.Error() that was returned from the workflow.
+func (i *Instance) Execute() Execution {
+	outputValues, serializedValues, errs := engine.NewEngine().Execute([]engine.Job{i})
+
+	var ex Execution
+
+	if outputValues != nil {
+		ex.outputValue = outputValues[0]
+		ex.err = errs[0]
+	}
+
+	if serializedValues != nil {
+		ex.serializedValue = serializedValues[0]
+	}
+
+	return ex
 }
 
 func validateInit(value interface{}) (reflect.Value, bool) {
@@ -263,17 +342,6 @@ func (i Instance) GetData() engine.Handler { return i.Handler }
 
 // GetName retrieves the name of an Instance. This is used in the agent code, so must be exported.
 func (i Instance) GetName() string { return i.name }
-
-// LaunchInfo is needed for the agent. You shouldn't need to use this.
-func (i Instance) LaunchInfo() engine.LaunchInfo {
-	return engine.LaunchInfo{
-		Type:      "workflow",
-		Name:      i.name,
-		Canonical: i.canonical,
-		ID:        i.GetCustomID(),
-		Data:      i.Handler,
-	}
-}
 
 // GetCustomID retrieves an Instance ID. This will be "" if you don't have a ID() string method in your workflow
 func (i *Instance) GetCustomID() string {
