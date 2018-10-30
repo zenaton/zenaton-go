@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased
 ### Fixed
 - improved error message when you try to launch a workflow without having listened yet
+- circle ci build to not copy the test_listen file anymore
 
 ## 0.2.0 - 2018-10-14
 ### Added
