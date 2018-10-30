@@ -160,6 +160,45 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 	}
 }
 
+func StartTask(taskName string, taskData interface{}) {
+	// start task
+	body := make(map[string]interface{})
+
+	body[attrProg] = prog
+	body[attrName] = taskName
+
+	var encodedData string
+	var err error
+
+	if taskData == nil {
+		encodedData = "{}"
+	} else {
+		encodedData, err = serializer.Encode(taskData)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	body[attrData] = encodedData
+
+	maxTimer, ok := taskData.(interface{MaxTime()int64})
+	if ok {
+
+	}
+
+	$data[self::ATTR_MAX_PROCESSING_TIME] =
+	(method_exists($task, 'getMaxProcessingTime')) ? $task->getMaxProcessingTime() : null;
+
+	$this->http->post($this->getTaskWorkerUrl(), $data);
+	}
+
+	protected function getTaskWorkerUrl($params = '')
+	{
+	return $this->getWorkerUrl('tasks', $params);
+	}
+
+}
+
 func (c *Client) KillWorkflow(workflowName, customId string) error {
 	err := c.updateInstance(workflowName, customId, workflowKill)
 	if err != nil {
