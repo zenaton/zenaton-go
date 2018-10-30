@@ -40,9 +40,11 @@ jobs:
         name: Download the agent
         command: curl https://install.zenaton.com | sh
 
+    # take the copy out when agent bug is fixed
     - run:
         name: Run integration tests
         command: |
           go get github.com/zenaton/agent-integration/go
           cd $(go env GOPATH)/src/github.com/zenaton/agent-integration/go
+          cp test_listen ~/.zenaton/lib/worker-0.4.5/priv/go/default/scripts/test_listen.go
           go test -v
