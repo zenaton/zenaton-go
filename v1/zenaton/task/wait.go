@@ -21,6 +21,12 @@ const (
 	modeTimestamp = "TIMESTAMP"
 )
 
+// Now can be changed so that the timestamp related methods can be properly tested. Note: the duration type methods
+// (like Seconds()) currently don't have any supported way fake time
+var Now = func() time.Time {
+	return time.Now()
+}
+
 // A WaitTask is a special form of task. This holds all the relevant information to wait for a duration or until a timestamp.
 type WaitTask struct {
 	task      *Instance
@@ -260,7 +266,7 @@ func (w *WaitTask) initNowThen() (time.Time, time.Time) {
 	if w.timezone == nil {
 		w.timezone = time.Local
 	}
-	n := time.Now()
+	n := Now()
 	var now = time.Date(n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second(), n.Nanosecond(), w.timezone)
 	var then = now
 	return now, then
@@ -368,6 +374,7 @@ func (w *WaitTask) _at(t string, now, then time.Time) (time.Time, error) {
 			then = then.AddDate(0, 0, 7)
 			break
 		case modeMonthDay:
+			fmt.Println("bob")
 			then = then.AddDate(0, 1, 0)
 			break
 		default:
@@ -385,9 +392,9 @@ func (w *WaitTask) _dayOfMonth(day int, now, then time.Time) (time.Time, error) 
 		return time.Time{}, err
 	}
 
-	then = time.Date(now.Year(), now.Month(), day, now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), w.timezone)
+	then = time.Date(then.Year(), then.Month(), day, then.Hour(), then.Minute(), then.Second(), then.Nanosecond(), w.timezone)
 
-	if now.After(then) || now.Day() == then.Day() {
+	if (now.After(then) || now.Day() == then.Day()) && !containsAtMethod(w.buffer) {
 		then = then.AddDate(0, 1, 0)
 	}
 
@@ -403,13 +410,22 @@ func (w *WaitTask) _weekDay(n int, weekday time.Weekday, then time.Time) (time.T
 	thenWeekday := then.Weekday()
 	then = then.AddDate(0, 0, int(weekday-thenWeekday))
 
-	if thenWeekday >= weekday {
+	if thenWeekday >= weekday && !containsAtMethod(w.buffer) {
 		then = then.AddDate(0, 0, n*7)
 	} else {
 		then = then.AddDate(0, 0, (n-1)*7)
 	}
 
 	return then, nil
+}
+
+func containsAtMethod(buffer []duration) bool {
+	for _, dur := range buffer {
+		if dur.method == "at" {
+			return true
+		}
+	}
+	return false
 }
 
 func (w *WaitTask) _setMode(mode string) error {
@@ -429,7 +445,6 @@ func (w *WaitTask) _setMode(mode string) error {
 	if w.mode == "" || modeAt == w.mode {
 		w.mode = mode
 	}
-	fmt.Println("mode: ", mode, "w.mode: ", w.mode)
 
 	return nil
 }

@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - improved error message when you try to launch a workflow without having listened yet
 - changes cp command in circle ci
+- wait weekday and DayOfMonth methods to wait for the next time if the given time is today.
+
+### Added
+- add tests for wait methods
 
 ## 0.2.0 - 2018-10-14
 ### Added
