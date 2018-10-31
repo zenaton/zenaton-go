@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
+	"github.com/zenaton/zenaton-go/v1/zenaton/internal/service/serializer"
 )
 
 // VersionOrWorkflowDef contains either a workflowDef or a versionDef but not both

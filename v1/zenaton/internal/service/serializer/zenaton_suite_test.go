@@ -1,4 +1,4 @@
-package service_test
+package serializer
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestService(t *testing.T) {
+func TestZenaton(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Service Suite")
+	RunSpecs(t, "Zenaton Suite")
 }

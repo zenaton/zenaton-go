@@ -173,10 +173,10 @@ var _ = Describe("WaitTask", func() {
 				It("should wait until that hour the next day", func() {
 
 					w := task.Wait().At(strconv.Itoa(fakeHour))
-					expectTimestampEqualTime(w, fakeDate.AddDate(0, 0, 1).Add(-fakeMin*time.Minute - fakeSec*time.Second))
+					expectTimestampEqualTime(w, fakeDate.AddDate(0, 0, 1).Add(-fakeMin*time.Minute-fakeSec*time.Second))
 				})
 			})
-			Context("when the given hour is after the current hour", func(){
+			Context("when the given hour is after the current hour", func() {
 				It("should wait until the hour on the same day", func() {
 
 					w := task.Wait().At(fakeTimePlus1Hour())
@@ -191,7 +191,7 @@ var _ = Describe("WaitTask", func() {
 				hour := fakeHour + 1
 				min := fakeMin + 1
 				w := task.Wait().At(strconv.Itoa(hour) + ":" + strconv.Itoa(min))
-				expectTimestampEqualTime(w, fakeDate.Add(time.Hour + time.Minute - (fakeSec * time.Second)))
+				expectTimestampEqualTime(w, fakeDate.Add(time.Hour+time.Minute-(fakeSec*time.Second)))
 			})
 		})
 
@@ -210,7 +210,6 @@ var _ = Describe("WaitTask", func() {
 			Context("when the specified weekday is today and the specified time is later than now", func() {
 				It("should wait until the specified time today", func() {
 
-
 					//fakeDate is a Tuesday
 					w := task.Wait().Tuesday(1).At(fakeTimePlus1Hour())
 					expectTimestampLater(w, time.Hour)
@@ -219,7 +218,6 @@ var _ = Describe("WaitTask", func() {
 
 			Context("when the specified weekday is NOT today", func() {
 				It("should wait until the specified time and weekday", func() {
-
 
 					//fakeDate is a Tuesday
 					w := task.Wait().Wednesday(1).At(fakeTimePlus1Hour())
@@ -233,7 +231,6 @@ var _ = Describe("WaitTask", func() {
 			Context("when the specified day is today and the specified time is later than now", func() {
 				It("should wait until the specified time today", func() {
 
-
 					w := task.Wait().DayOfMonth(fakeDay).At(fakeTimePlus1Hour())
 
 					expectTimestampLater(w, time.Hour)
@@ -242,7 +239,6 @@ var _ = Describe("WaitTask", func() {
 
 			Context("when the specified day is NOT today", func() {
 				It("should wait until the specified time and day", func() {
-
 
 					//fakeDate is a Tuesday
 					w := task.Wait().DayOfMonth(fakeDay + 1).At(fakeTimePlus1Hour())
@@ -305,49 +301,49 @@ var _ = Describe("WaitTask", func() {
 			It("should wait until the nth Monday (same time)", func() {
 				w := task.Wait().Monday(2)
 				//fakeDate is a tuesday
-				expectTimestampEqualTime(w, fakeDate.AddDate(0,0, 13))
+				expectTimestampEqualTime(w, fakeDate.AddDate(0, 0, 13))
 			})
 		})
 
 		Context("when using Tuesday", func() {
 			It("should wait until the nth Tuesday (same time)", func() {
 				w := task.Wait().Tuesday(2)
-				expectTimestampEqualTime(w, fakeDate.AddDate(0,0, 14))
+				expectTimestampEqualTime(w, fakeDate.AddDate(0, 0, 14))
 			})
 		})
 
 		Context("when using Wednesday", func() {
 			It("should wait until the nth Wednesday (same time)", func() {
 				w := task.Wait().Wednesday(2)
-				expectTimestampEqualTime(w, fakeDate.AddDate(0,0, 8))
+				expectTimestampEqualTime(w, fakeDate.AddDate(0, 0, 8))
 			})
 		})
 
 		Context("when using Thursday", func() {
 			It("should wait until the nth Thursday (same time)", func() {
 				w := task.Wait().Thursday(2)
-				expectTimestampEqualTime(w, fakeDate.AddDate(0,0, 9))
+				expectTimestampEqualTime(w, fakeDate.AddDate(0, 0, 9))
 			})
 		})
 
 		Context("when using Friday", func() {
 			It("should wait until the nth Friday (same time)", func() {
 				w := task.Wait().Friday(2)
-				expectTimestampEqualTime(w, fakeDate.AddDate(0,0, 10))
+				expectTimestampEqualTime(w, fakeDate.AddDate(0, 0, 10))
 			})
 		})
 
 		Context("when using Saturday", func() {
 			It("should wait until the nth Saturday (same time)", func() {
 				w := task.Wait().Saturday(2)
-				expectTimestampEqualTime(w, fakeDate.AddDate(0,0, 11))
+				expectTimestampEqualTime(w, fakeDate.AddDate(0, 0, 11))
 			})
 		})
 
 		Context("when using Sunday", func() {
 			It("should wait until the nth Sunday (same time)", func() {
 				w := task.Wait().Sunday(2)
-				expectTimestampEqualTime(w, fakeDate.AddDate(0,0, 12))
+				expectTimestampEqualTime(w, fakeDate.AddDate(0, 0, 12))
 			})
 		})
 

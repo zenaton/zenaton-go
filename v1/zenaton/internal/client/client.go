@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 
 	"github.com/zenaton/zenaton-go/v1/zenaton/service"
-	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
+	"github.com/zenaton/zenaton-go/v1/zenaton/internal/service/serializer"
 )
 
 const (

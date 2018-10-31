@@ -1,4 +1,4 @@
-package serializer_test
+package serializer
 
 //
 //import (
@@ -16,7 +16,7 @@ package serializer_test
 //	"unsafe"
 //
 //	"github.com/davecgh/go-spew/spew"
-//	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
+//	"github.com/zenaton/zenaton-go/v1/zenaton/internal/service/serializer"
 //)
 //
 //var pointed = "v"

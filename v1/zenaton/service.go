@@ -4,7 +4,7 @@ import (
 	"github.com/zenaton/zenaton-go/v1/zenaton/errors"
 	"github.com/zenaton/zenaton-go/v1/zenaton/internal/client"
 	"github.com/zenaton/zenaton-go/v1/zenaton/internal/engine"
-	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
+	"github.com/zenaton/zenaton-go/v1/zenaton/internal/service/serializer"
 	"github.com/zenaton/zenaton-go/v1/zenaton/task"
 	"github.com/zenaton/zenaton-go/v1/zenaton/workflow"
 )

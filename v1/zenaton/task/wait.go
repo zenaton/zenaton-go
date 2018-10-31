@@ -11,7 +11,7 @@ import (
 	"reflect"
 
 	"github.com/zenaton/zenaton-go/v1/zenaton/internal/engine"
-	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
+	"github.com/zenaton/zenaton-go/v1/zenaton/internal/service/serializer"
 )
 
 const (
@@ -432,7 +432,6 @@ func (w *WaitTask) _setMode(mode string) error {
 
 	// can not apply twice the same method
 	if mode == w.mode {
-		fmt.Println("this should print")
 		return errors.New("incompatible definition in WaitTask methods")
 	}
 
