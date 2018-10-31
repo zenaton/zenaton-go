@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ### fixes
-- fixes wait weekday and DayOfMonth wait methods when the given day is the same as today.
+- fixes wait weekday and DayOfMonth methods when the given day is the same as today.
 
 ## 0.2.0 - 2018-10-14
 ### Added

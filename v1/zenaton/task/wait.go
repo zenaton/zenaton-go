@@ -380,9 +380,9 @@ func (w *WaitTask) _dayOfMonth(day int, now, then time.Time) (time.Time, error) 
 		return time.Time{}, err
 	}
 
-	then = time.Date(now.Year(), now.Month(), day, now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), w.timezone)
+	then = time.Date(then.Year(), then.Month(), day, then.Hour(), then.Minute(), then.Second(), then.Nanosecond(), w.timezone)
 
-	if now.After(then) || now.Day() == then.Day() {
+	if (now.After(then) || now.Day() == then.Day()) && !containsAtMethod(w.buffer) {
 		then = then.AddDate(0, 1, 0)
 	}
 
@@ -398,13 +398,22 @@ func (w *WaitTask) _weekDay(n int, weekday time.Weekday, then time.Time) (time.T
 	thenWeekday := then.Weekday()
 	then = then.AddDate(0, 0, int(weekday-thenWeekday))
 
-	if thenWeekday >= weekday {
+	if thenWeekday >= weekday && !containsAtMethod(w.buffer) {
 		then = then.AddDate(0, 0, n*7)
 	} else {
 		then = then.AddDate(0, 0, (n-1)*7)
 	}
 
 	return then, nil
+}
+
+func containsAtMethod(buffer []duration) bool {
+	for _, dur := range buffer {
+		if dur.method == "at" {
+			return true
+		}
+	}
+	return false
 }
 
 func (w *WaitTask) _setMode(mode string) error {
