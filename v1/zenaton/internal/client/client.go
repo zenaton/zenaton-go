@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"runtime"
@@ -38,6 +39,7 @@ const (
 	attrData      = "data"
 	attrProg      = "programming_language"
 	attrMode      = "mode"
+	attrMaxProcessingTime = "maxProcessingTime"
 
 	prog = "Go"
 
@@ -113,6 +115,10 @@ func (c *Client) getWebsiteURL(resources, params string) string {
 	return c.addAppEnv(url, params)
 }
 
+type errResponse struct {
+	Error string `json:"error"`
+}
+
 func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data interface{}) {
 
 	if len(customID) >= maxIDsize {
@@ -143,24 +149,29 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 	body[attrID] = customID
 
 	resp, err := service.Post(c.getInstanceWorkerUrl(""), body)
+
 	if err != nil {
-		if strings.Contains(err.Error(), "connection refused") {
+		if err != nil  && strings.Contains(err.Error(), "connection refused") {
 			panic("connection refused: try starting zenaton with 'zenaton start'")
 		}
+		panic(err)
 	}
 
 	defer resp.Body.Close()
 	respBody, err := ioutil.ReadAll(resp.Body)
-
 	if err != nil {
 		panic(err)
 	}
-	if strings.Contains(string(respBody), `Your worker does not listen to app`) {
-		panic(string(respBody))
+
+	var eResp errResponse
+	json.Unmarshal(respBody, &eResp)
+
+	if eResp.Error != "" {
+		log.Fatal(eResp.Error)
 	}
 }
 
-func StartTask(taskName string, taskData interface{}) {
+func (c *Client) StartTask(taskName string, taskData interface{}) {
 	// start task
 	body := make(map[string]interface{})
 
@@ -183,20 +194,33 @@ func StartTask(taskName string, taskData interface{}) {
 
 	maxTimer, ok := taskData.(interface{MaxTime()int64})
 	if ok {
-
+		body[attrMaxProcessingTime] = maxTimer.MaxTime()
+	} else {
+		body[attrMaxProcessingTime] = nil
 	}
 
-	$data[self::ATTR_MAX_PROCESSING_TIME] =
-	(method_exists($task, 'getMaxProcessingTime')) ? $task->getMaxProcessingTime() : null;
 
-	$this->http->post($this->getTaskWorkerUrl(), $data);
+	resp, err := service.Post(c.getTaskWorkerUrl(""), body)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "connection refused") {
+			log.Fatal("connection refused: try starting zenaton with 'zenaton start'")
+		}
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
 	}
 
-	protected function getTaskWorkerUrl($params = '')
-	{
-	return $this->getWorkerUrl('tasks', $params);
-	}
+	var eResp errResponse
+	json.Unmarshal(respBody, &eResp)
 
+	if eResp.Error != "" {
+		log.Fatal(eResp.Error)
+	}
 }
 
 func (c *Client) KillWorkflow(workflowName, customId string) error {
@@ -293,6 +317,10 @@ func (c *Client) getInstanceWebsiteURL(params string) string {
 
 func (c *Client) getInstanceWorkerUrl(params string) string {
 	return c.GetWorkerUrl("instances", params)
+}
+
+func (c *Client) getTaskWorkerUrl(params string) string {
+	return c.GetWorkerUrl("tasks", params)
 }
 
 func (c *Client) addAppEnv(url, params string) string {

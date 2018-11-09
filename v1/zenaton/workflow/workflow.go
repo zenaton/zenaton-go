@@ -268,10 +268,8 @@ func (i Instance) GetName() string { return i.name }
 func (i Instance) LaunchInfo() engine.LaunchInfo {
 	return engine.LaunchInfo{
 		Type:      "workflow",
-		Name:      i.name,
 		Canonical: i.canonical,
 		ID:        i.GetCustomID(),
-		Data:      i.Handler,
 	}
 }
 

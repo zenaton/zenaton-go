@@ -23,10 +23,8 @@ type Processor interface {
 
 type LaunchInfo struct {
 	Type      string
-	Name      string
 	Canonical string
 	ID        string
-	Data      interface{}
 }
 
 type Handler interface {
@@ -66,10 +64,12 @@ func (e *Engine) Dispatch(jobs []Job) {
 
 		for _, job := range jobs {
 			li := job.LaunchInfo()
+
+			// we cannot use a normal type switch here, as the task and workflow packages import /engine and we'd get an import loop
 			if li.Type == "workflow" {
-				client.NewClient(false).StartWorkflow(li.Name, li.Canonical, li.ID, li.Data)
+				client.NewClient(false).StartWorkflow(job.GetName(), li.Canonical, li.ID, job.GetData())
 			} else {
-				job.Handle()
+				client.NewClient(false).StartTask(job.GetName(), job.GetData())
 			}
 		}
 
