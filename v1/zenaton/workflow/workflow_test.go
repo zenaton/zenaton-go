@@ -4,7 +4,6 @@ import (
 	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/zenaton/zenaton-go/v1/zenaton/task"
 	"github.com/zenaton/zenaton-go/v1/zenaton/workflow"
 )
 
@@ -76,25 +75,25 @@ var _ = Describe("Workflow", func() {
 		})
 	})
 
-	Context("Given a workflow instance", func() {
-		It("should be able to Execute the workflow", func() {
-			testTask := task.New("testTask",
-				func()(interface{}, error){
-					return "test task output", nil
-				})
-			testWorkflow := workflow.New("parallelWorkflow",
-				func() (interface{}, error) {
-					var output string
-					testTask.New().Execute().Output(&output)
-					return output, nil
-				})
-
-			var workflowOutput string
-			testWorkflow.New().Execute().Output(&workflowOutput)
-
-
-		})
-	})
+	//Context("Given a workflow instance", func() {
+	//	It("should be able to Execute the workflow", func() {
+	//		testTask := task.New("testTask",
+	//			func()(interface{}, error){
+	//				return "test task output", nil
+	//			})
+	//		testWorkflow := workflow.New("parallelWorkflow",
+	//			func() (interface{}, error) {
+	//				var output string
+	//				testTask.New().Execute().Output(&output)
+	//				return output, nil
+	//			})
+	//
+	//		var workflowOutput string
+	//		testWorkflow.New().Execute().Output(&workflowOutput)
+	//
+	//
+	//	})
+	//})
 })
 
 type unserializableHandler struct{ Func func() }
