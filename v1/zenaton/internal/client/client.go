@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"runtime"
@@ -155,8 +156,14 @@ func (c *Client) StartWorkflow(flowName, flowCanonical, customID string, data in
 	if err != nil {
 		panic(err)
 	}
+
 	if strings.Contains(string(respBody), `Your worker does not listen to app`) {
-		panic(string(respBody))
+
+		var errResponse map[string]string
+		json.Unmarshal(respBody, &errResponse)
+
+		log.Println(errResponse["error"])
+		log.Fatal("please run the 'zenaton listen' command. For example: 'zenaton listen --env=.env --boot=boot/boot.go'")
 	}
 }
 
