@@ -11,7 +11,7 @@ import (
 	"reflect"
 
 	"github.com/zenaton/zenaton-go/v1/zenaton/internal/engine"
-	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
+	"github.com/zenaton/zenaton-go/v1/zenaton/internal/service/serializer"
 )
 
 const (
@@ -20,6 +20,12 @@ const (
 	modeMonthDay  = "MONTH_DAY"
 	modeTimestamp = "TIMESTAMP"
 )
+
+// Now can be changed so that the timestamp related methods can be properly tested. Note: the duration type methods
+// (like Seconds()) currently don't have any supported way fake time
+var Now = func() time.Time {
+	return time.Now()
+}
 
 // A WaitTask is a special form of task. This holds all the relevant information to wait for a duration or until a timestamp.
 type WaitTask struct {
@@ -35,11 +41,11 @@ type WaitTask struct {
 // days, 2 hours, 15 minutes and 23 seconds!
 func Wait() *WaitTask {
 	return &WaitTask{
-		task: waitTask,
+		task: waitTask.New(),
 	}
 }
 
-var waitTask = NewCustom("_Wait", &wait{}).New()
+var waitTask = NewCustom("_Wait", &wait{})
 
 type wait struct{}
 
@@ -148,7 +154,7 @@ func (w *WaitTask) Weeks(value int64) *WaitTask {
 	return w
 }
 
-// Months waits for the provided number of weeks
+// Months waits for the provided number of months
 func (w *WaitTask) Months(value int64) *WaitTask {
 	w.push(duration{
 		method: "months",
@@ -176,7 +182,9 @@ func (w *WaitTask) Years(value int64) *WaitTask {
 
 // Timezone allows you to define a different timezone than your local one. Use this before launching a wait task.
 // For example:
-// 		task.Wait().Timezone("Europe/Paris").Execute()
+// 		waitTask := task.Wait().Timezone("Europe/Paris")
+// 		waitTask.At("9:30").Execute()
+// This will wait until 9:30 (AM) in the Paris timezone.
 func (w *WaitTask) Timezone(timezone string) error {
 	tz, err := time.LoadLocation(timezone)
 	if err != nil {
@@ -200,51 +208,51 @@ func (w *WaitTask) At(value string) *WaitTask {
 }
 
 // DayOfMonth waits until the next given day of the month.
-// For example: .DayOfMonth(12) waits to next 12th day (same hour)
+// For example: .DayOfMonth(12) waits to next 12th day (same time)
 func (w *WaitTask) DayOfMonth(value int) *WaitTask {
 	w.push(duration{"dayOfMonth", value})
 	return w
 }
 
-// Monday waits until the next monday (same hour)
+// Monday waits until the next monday (same time)
 func (w *WaitTask) Monday(value int) *WaitTask {
-	w.push(duration{"Monday", value})
+	w.push(duration{"monday", value})
 	return w
 }
 
-// Tuesday waits until the next tuesday (same hour)
+// Tuesday waits until the next tuesday (same time)
 func (w *WaitTask) Tuesday(value int) *WaitTask {
-	w.push(duration{"Tuesday", value})
+	w.push(duration{"tuesday", value})
 	return w
 }
 
-// Wednesday waits until the next wednesday (same hour)
+// Wednesday waits until the next wednesday (same time)
 func (w *WaitTask) Wednesday(value int) *WaitTask {
-	w.push(duration{"Wednesday", value})
+	w.push(duration{"wednesday", value})
 	return w
 }
 
-// Thursday waits until the next thursday (same hour)
+// Thursday waits until the next thursday (same time)
 func (w *WaitTask) Thursday(value int) *WaitTask {
-	w.push(duration{"Thursday", value})
+	w.push(duration{"thursday", value})
 	return w
 }
 
-// Friday waits until the next friday (same hour)
+// Friday waits until the next friday (same time)
 func (w *WaitTask) Friday(value int) *WaitTask {
-	w.push(duration{"Friday", value})
+	w.push(duration{"friday", value})
 	return w
 }
 
-// Saturday waits until the next saturday (same hour)
+// Saturday waits until the next saturday (same time)
 func (w *WaitTask) Saturday(value int) *WaitTask {
-	w.push(duration{"Saturday", value})
+	w.push(duration{"saturday", value})
 	return w
 }
 
-// Sunday waits until the next sunday (same hour)
+// Sunday waits until the next sunday (same time)
 func (w *WaitTask) Sunday(value int) *WaitTask {
-	w.push(duration{"Sunday", value})
+	w.push(duration{"sunday", value})
 	return w
 }
 
@@ -255,10 +263,11 @@ func (w *WaitTask) push(data duration) {
 func (w *WaitTask) initNowThen() (time.Time, time.Time) {
 	// get set or current time zone
 
+	n := Now()
 	if w.timezone == nil {
-		w.timezone = time.Local
+		w.timezone = n.Location()
 	}
-	n := time.Now()
+
 	var now = time.Date(n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second(), n.Nanosecond(), w.timezone)
 	var then = now
 	return now, then
@@ -299,19 +308,19 @@ func (w *WaitTask) apply(method string, value interface{}, now, then time.Time) 
 	case "dayOfMonth":
 		return w._dayOfMonth(value.(int), now, then)
 	case "monday":
-		return w._weekDay(value.(int), 1, then)
+		return w._weekDay(value.(int), time.Monday, then)
 	case "tuesday":
-		return w._weekDay(value.(int), 2, then)
+		return w._weekDay(value.(int), time.Tuesday, then)
 	case "wednesday":
-		return w._weekDay(value.(int), 3, then)
+		return w._weekDay(value.(int), time.Wednesday, then)
 	case "thursday":
-		return w._weekDay(value.(int), 4, then)
+		return w._weekDay(value.(int), time.Thursday, then)
 	case "friday":
-		return w._weekDay(value.(int), 5, then)
+		return w._weekDay(value.(int), time.Friday, then)
 	case "saturday":
-		return w._weekDay(value.(int), 6, then)
+		return w._weekDay(value.(int), time.Saturday, then)
 	case "sunday":
-		return w._weekDay(value.(int), 7, then)
+		return w._weekDay(value.(int), time.Sunday, then)
 	default:
 		return w._applyDuration(method, value.(int64), then)
 	}
@@ -333,10 +342,12 @@ func (w *WaitTask) _at(t string, now, then time.Time) (time.Time, error) {
 	}
 
 	segments := strings.Split(t, ":")
+
 	h, err := strconv.Atoi(segments[0])
 	if err != nil {
 		return time.Time{}, errors.New("time formatted incorrectly")
 	}
+
 	var m int
 	if len(segments) > 1 {
 		m, err = strconv.Atoi(segments[1])
@@ -344,6 +355,7 @@ func (w *WaitTask) _at(t string, now, then time.Time) (time.Time, error) {
 			return time.Time{}, errors.New("time formatted incorrectly")
 		}
 	}
+
 	var s int
 	if len(segments) > 2 {
 		s, err = strconv.Atoi(segments[2])
@@ -352,7 +364,7 @@ func (w *WaitTask) _at(t string, now, then time.Time) (time.Time, error) {
 		}
 	}
 
-	then = time.Date(now.Year(), now.Month(), now.Day(), h, m, s, 0, w.timezone)
+	then = time.Date(then.Year(), then.Month(), then.Day(), h, m, s, 0, w.timezone)
 
 	if now.After(then) {
 		switch w.mode {
@@ -380,41 +392,52 @@ func (w *WaitTask) _dayOfMonth(day int, now, then time.Time) (time.Time, error) 
 		return time.Time{}, err
 	}
 
-	then = time.Date(now.Year(), now.Month(), day, now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), w.timezone)
+	then = time.Date(then.Year(), then.Month(), day, then.Hour(), then.Minute(), then.Second(), then.Nanosecond(), w.timezone)
 
-	if now.After(then) {
+	if (now.After(then) || now.Day() == then.Day()) && !containsAtMethod(w.buffer) {
 		then = then.AddDate(0, 1, 0)
 	}
 
 	return then, nil
 }
 
-func (w *WaitTask) _weekDay(n int, day int, then time.Time) (time.Time, error) {
+func (w *WaitTask) _weekDay(n int, weekday time.Weekday, then time.Time) (time.Time, error) {
 	err := w._setMode(modeWeekDay)
 	if err != nil {
 		return time.Time{}, err
 	}
 
-	d := int(then.Weekday())
-	then = then.AddDate(0, 0, day-d)
+	thenWeekday := then.Weekday()
+	then = then.AddDate(0, 0, int(weekday-thenWeekday))
 
-	if d > day {
-		then.AddDate(0, 0, n*7)
+	if thenWeekday >= weekday && !containsAtMethod(w.buffer) {
+		then = then.AddDate(0, 0, n*7)
 	} else {
-		then.AddDate(0, 0, (n-1)*7)
+		then = then.AddDate(0, 0, (n-1)*7)
 	}
 
 	return then, nil
 }
 
+func containsAtMethod(buffer []duration) bool {
+	for _, dur := range buffer {
+		if dur.method == "at" {
+			return true
+		}
+	}
+	return false
+}
+
 func (w *WaitTask) _setMode(mode string) error {
+
 	// can not apply twice the same method
 	if mode == w.mode {
 		return errors.New("incompatible definition in WaitTask methods")
 	}
+
 	// timestamp can only be used alone
-	if (w.mode != "" && mode == modeTimestamp) || w.mode == modeTimestamp {
-		return errors.New("incompatible definition in WaitTask methods")
+	if w.mode == modeTimestamp {
+		return errors.New("timestamp can only be used alone")
 	}
 
 	// other mode takes precedence to modeAt
@@ -463,7 +486,7 @@ func (w *WaitTask) GetName() string {
 
 // GetData will return the underlying handler of the task.
 func (w *WaitTask) GetData() engine.Handler {
-	return waitTask.Handler
+	return w.task.Handler
 }
 
 // WaitExecution is the result of calling Execute on a WaitTask. This will hold the serialized event value (if there is one).

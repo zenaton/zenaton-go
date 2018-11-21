@@ -10,7 +10,7 @@ import (
 	"errors"
 
 	"github.com/zenaton/zenaton-go/v1/zenaton/internal/engine"
-	"github.com/zenaton/zenaton-go/v1/zenaton/service/serializer"
+	"github.com/zenaton/zenaton-go/v1/zenaton/internal/service/serializer"
 )
 
 // Definition is the task definition. From a definition, you can create task instances with *Definition.New().

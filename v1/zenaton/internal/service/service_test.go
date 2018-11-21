@@ -4,7 +4,7 @@ import (
 	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/zenaton/zenaton-go/v1/zenaton/service"
+	"github.com/zenaton/zenaton-go/v1/zenaton/internal/service"
 	"io/ioutil"
 	"net"
 	"net/http"
