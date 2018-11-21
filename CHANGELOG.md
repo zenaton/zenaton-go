@@ -5,10 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+
+## 0.2.1 - 2018-11-20
 ### Fixed
 - improved error message when you try to launch a workflow without having listened yet
 - changes cp command in circle ci
-- wait weekday and DayOfMonth methods to wait for the next time if the given time is today.
+- fixed wait weekday and DayOfMonth methods to wait for the next time if the given time is today.
 
 ### Added
 - add tests for wait methods

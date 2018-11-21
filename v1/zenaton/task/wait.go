@@ -374,7 +374,6 @@ func (w *WaitTask) _at(t string, now, then time.Time) (time.Time, error) {
 			then = then.AddDate(0, 0, 7)
 			break
 		case modeMonthDay:
-			fmt.Println("bob")
 			then = then.AddDate(0, 1, 0)
 			break
 		default:

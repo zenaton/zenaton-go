@@ -1,6 +1,7 @@
 package task_test
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -105,13 +106,14 @@ var _ = Describe("WaitTask", func() {
 		})
 		It("should Wait for a month", func() {
 			w := task.Wait().Months(1)
-			now := time.Now()
+			now := task.Now()
 			then := now.AddDate(0, 1, 0)
+			fmt.Println("then: ", then)
 			expectDurationInSeconds(w, int(then.Unix()-now.Unix()))
 		})
 		It("should Wait for a year", func() {
 			w := task.Wait().Years(1)
-			now := time.Now()
+			now := task.Now()
 			then := now.AddDate(1, 0, 0)
 			expectDurationInSeconds(w, int(then.Unix()-now.Unix()))
 		})
@@ -371,6 +373,7 @@ func expectTimestampLater(w *task.WaitTask, dif time.Duration) {
 
 func expectDurationInSeconds(w *task.WaitTask, seconds int) {
 	timestamp, duration, err := w.GetTimestampOrDuration()
+	fmt.Println("duration:", duration)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(timestamp).To(Equal(int64(0)))
 	Expect(duration).To(Equal(int64(seconds)))
