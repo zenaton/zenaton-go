@@ -295,7 +295,7 @@ func (w *WaitTask) GetTimestampOrDuration() (int64, int64, error) {
 		return then.Unix(), 0, nil
 	}
 
-	fmt.Println("library then: ", then, "now: ", now)
+	fmt.Println("library then: ", then.Unix(), "now: ", now.Unix())
 	return 0, then.Unix() - now.Unix(), nil
 }
 
