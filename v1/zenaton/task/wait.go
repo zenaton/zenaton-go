@@ -263,10 +263,11 @@ func (w *WaitTask) push(data duration) {
 func (w *WaitTask) initNowThen() (time.Time, time.Time) {
 	// get set or current time zone
 
-	if w.timezone == nil {
-		w.timezone = time.Local
-	}
 	n := Now()
+	if w.timezone == nil {
+		w.timezone = n.Location()
+	}
+
 	var now = time.Date(n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second(), n.Nanosecond(), w.timezone)
 	var then = now
 	return now, then
