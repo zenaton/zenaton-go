@@ -108,7 +108,6 @@ var _ = Describe("WaitTask", func() {
 			w := task.Wait().Months(1)
 			now := task.Now()
 			then := now.AddDate(0, 1, 0)
-			fmt.Println("test then: ", then.Unix(), "now: ", now.Unix())
 			expectDurationInSeconds(w, int(then.Unix()-now.Unix()))
 		})
 		It("should Wait for a year", func() {
