@@ -1,3 +1,5 @@
+> ⚠️ This repository is abandoned.
+
 # Zenaton library for Go
 
 This Zenaton library for Go lets you code and launch workflows using Zenaton platform. You can sign up for an account at [https://zenaton.com](http://zenaton.com)
